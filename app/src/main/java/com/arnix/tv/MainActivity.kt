@@ -16,6 +16,7 @@ import android.view.Gravity
 import android.view.KeyEvent
 import android.view.MotionEvent
 import android.view.View
+import android.view.ViewGroup
 import android.view.WindowManager
 import android.widget.FrameLayout
 import android.widget.ImageView
@@ -304,7 +305,7 @@ class MainActivity : AppCompatActivity() {
         drawer.addView(subtitle)
         val scroll = ScrollView(this)
         channelListContainer = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
-        scroll.addView(channelListContainer, ScrollView.LayoutParams(-1, -2))
+        scroll.addView(channelListContainer, ViewGroup.LayoutParams(-1, -2))
         drawer.addView(scroll, LinearLayout.LayoutParams(-1, 0, 1f))
         val close = TextView(this).apply {
             text = "←  Закрыть"
