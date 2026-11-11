@@ -439,7 +439,7 @@ class MainActivity : AppCompatActivity() {
 
             val logo = ImageView(this).apply {
                 scaleType = ImageView.ScaleType.FIT_CENTER
-                setBackgroundColor(0x222FFFFFF)
+                setBackgroundColor(0x22FFFFFF.toInt())
                 if (channel.logo.isBlank()) setImageResource(android.R.drawable.ic_menu_info_details)
             }
             item.addView(logo, LinearLayout.LayoutParams(dp(38), dp(30)).apply {
