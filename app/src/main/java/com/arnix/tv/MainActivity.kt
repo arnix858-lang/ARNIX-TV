@@ -35,6 +35,7 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import java.util.TimeZone
+import java.util.concurrent.ConcurrentHashMap
 
 class MainActivity : AppCompatActivity() {
     private data class Channel(
@@ -63,6 +64,8 @@ class MainActivity : AppCompatActivity() {
     private var touchDownY = 0f
     private var channels: List<Channel> = emptyList()
     private var currentChannelIndex = -1
+    private var currentProgramme: Programme? = null
+    private val epgCache = ConcurrentHashMap<String, List<Programme>>()
 
     private val playlistUrl = "https://raw.githubusercontent.com/arnix858-lang/ARNIX-IPTV/main/playlist.m3u"
     private val epgUrl = "https://iptvx.one/EPG"
@@ -328,6 +331,7 @@ class MainActivity : AppCompatActivity() {
             if (channel.group.isNotBlank()) " • ${channel.group}" else " • Прямой эфир"
         nowView.text = "СЕЙЧАС   Загрузка программы…"
         nextView.text = "ДАЛЕЕ   Загрузка программы…"
+        currentProgramme = null
         progress.progress = 0
         loadLogo(channel)
         hint.text = "ARNIX TV\nПодключение: ${channel.name}"
@@ -373,6 +377,11 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun loadEpgFor(channel: Channel) {
+        val cached = epgCache[channel.id]
+        if (cached != null) {
+            displayEpg(channel, cached)
+            return
+        }
         Thread {
             var connection: HttpURLConnection? = null
             try {
@@ -383,16 +392,8 @@ class MainActivity : AppCompatActivity() {
                     setRequestProperty("User-Agent", "ARNIX-TV/0.3")
                 }
                 val programmes = parseEpg(connection.inputStream, channel.id)
-                runOnUiThread {
-                    if (isFinishing || isDestroyed || currentChannelIndex !in channels.indices ||
-                        channels[currentChannelIndex].id != channel.id) return@runOnUiThread
-                    val now = System.currentTimeMillis()
-                    val current = programmes.firstOrNull { now >= it.start && now < it.stop }
-                    val next = programmes.filter { it.start >= now }.minByOrNull { it.start }
-                    nowView.text = "СЕЙЧАС   ${current?.title ?: "Нет данных программы"}"
-                    nextView.text = "ДАЛЕЕ   ${next?.title ?: "Нет данных программы"}"
-                    updateProgress(current)
-                }
+                epgCache[channel.id] = programmes
+                runOnUiThread { displayEpg(channel, programmes) }
             } catch (_: Exception) {
                 runOnUiThread {
                     if (!isFinishing && !isDestroyed && currentChannelIndex >= 0 &&
@@ -405,6 +406,17 @@ class MainActivity : AppCompatActivity() {
                 connection?.disconnect()
             }
         }.start()
+    }
+
+    private fun displayEpg(channel: Channel, programmes: List<Programme>) {
+        if (isFinishing || isDestroyed || currentChannelIndex !in channels.indices ||
+            channels[currentChannelIndex].id != channel.id) return
+        val now = System.currentTimeMillis()
+        currentProgramme = programmes.firstOrNull { now >= it.start && now < it.stop }
+        val next = programmes.filter { it.start >= now }.minByOrNull { it.start }
+        nowView.text = "СЕЙЧАС   ${currentProgramme?.title ?: "Нет данных программы"}"
+        nextView.text = "ДАЛЕЕ   ${next?.title ?: "Нет данных программы"}"
+        updateProgress()
     }
 
     private fun parseEpg(input: java.io.InputStream, channelId: String): List<Programme> {
@@ -450,15 +462,11 @@ class MainActivity : AppCompatActivity() {
         } catch (_: Exception) { 0L }
     }
 
-    private fun updateProgress(programme: Programme? = null) {
-        if (currentChannelIndex !in channels.indices) return
-        // Refresh the progress bar from the visible programme time labels.
-        // If no programme is currently available, keep it empty.
-        if (programme != null) {
-            val duration = (programme.stop - programme.start).coerceAtLeast(1L)
-            val elapsed = (System.currentTimeMillis() - programme.start).coerceIn(0L, duration)
-            progress.progress = ((elapsed * 1000L) / duration).toInt()
-        }
+    private fun updateProgress() {
+        val programme = currentProgramme ?: run { progress.progress = 0; return }
+        val duration = (programme.stop - programme.start).coerceAtLeast(1L)
+        val elapsed = (System.currentTimeMillis() - programme.start).coerceIn(0L, duration)
+        progress.progress = ((elapsed * 1000L) / duration).toInt()
     }
 
     private fun toggleInfoBar() = showInfoBar(!overlayVisible)
