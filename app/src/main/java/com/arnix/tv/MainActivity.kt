@@ -1,14 +1,22 @@
 package com.arnix.tv
 
+import android.graphics.BitmapFactory
+import android.graphics.Color
+import android.graphics.Typeface
+import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.util.Xml
 import android.view.Gravity
 import android.view.KeyEvent
+import android.view.MotionEvent
 import android.view.View
 import android.view.WindowManager
 import android.widget.FrameLayout
+import android.widget.ImageView
 import android.widget.LinearLayout
+import android.widget.ProgressBar
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.WindowCompat
@@ -20,37 +28,63 @@ import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.media3.ui.PlayerView
+import org.xmlpull.v1.XmlPullParser
 import java.net.HttpURLConnection
 import java.net.URL
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+import java.util.TimeZone
 
 class MainActivity : AppCompatActivity() {
-    private data class Channel(val name: String, val url: String)
+    private data class Channel(
+        val name: String,
+        val url: String,
+        val id: String,
+        val logo: String,
+        val group: String
+    )
+    private data class Programme(val title: String, val start: Long, val stop: Long)
 
     private var player: ExoPlayer? = null
     private lateinit var playerView: PlayerView
     private lateinit var infoBar: LinearLayout
     private lateinit var hint: TextView
+    private lateinit var logoView: ImageView
+    private lateinit var logoFallback: TextView
     private lateinit var channelNameView: TextView
-    private lateinit var programmeView: TextView
+    private lateinit var channelMetaView: TextView
+    private lateinit var nowView: TextView
+    private lateinit var nextView: TextView
+    private lateinit var progress: ProgressBar
     private val handler = Handler(Looper.getMainLooper())
     private var overlayVisible = false
+    private var touchDownX = 0f
+    private var touchDownY = 0f
+    private var channels: List<Channel> = emptyList()
+    private var currentChannelIndex = -1
 
-    // Главный M3U-плейлист проекта ARNIX IPTV.
-    private val playlistUrl =
-        "https://raw.githubusercontent.com/arnix858-lang/ARNIX-IPTV/main/playlist.m3u"
+    private val playlistUrl = "https://raw.githubusercontent.com/arnix858-lang/ARNIX-IPTV/main/playlist.m3u"
+    private val epgUrl = "https://iptvx.one/EPG"
     private val hideOverlay = Runnable { showInfoBar(false) }
+    private val progressTicker = object : Runnable {
+        override fun run() {
+            updateProgress()
+            handler.postDelayed(this, 30000)
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         enterImmersiveMode()
 
-        val root = FrameLayout(this).apply { setBackgroundColor(0xFF000000.toInt()) }
+        val root = FrameLayout(this).apply { setBackgroundColor(Color.BLACK) }
         playerView = PlayerView(this).apply {
             useController = false
             resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FIT
-            setShutterBackgroundColor(android.graphics.Color.BLACK)
-            setBackgroundColor(android.graphics.Color.BLACK)
+            setShutterBackgroundColor(Color.BLACK)
+            setBackgroundColor(Color.BLACK)
         }
         root.addView(playerView, FrameLayout.LayoutParams(-1, -1))
 
@@ -64,12 +98,34 @@ class MainActivity : AppCompatActivity() {
         root.addView(hint, FrameLayout.LayoutParams(-1, -1))
 
         infoBar = buildInfoBar()
-        val infoParams = FrameLayout.LayoutParams(-1, dp(112), Gravity.BOTTOM)
-        infoParams.setMargins(dp(20), 0, dp(20), dp(22))
+        val infoParams = FrameLayout.LayoutParams(-1, -2, Gravity.BOTTOM)
+        infoParams.setMargins(dp(18), 0, dp(18), dp(22))
         root.addView(infoBar, infoParams)
         infoBar.visibility = View.GONE
-        root.setOnClickListener { toggleInfoBar() }
-        playerView.setOnClickListener { toggleInfoBar() }
+
+        val gestureListener = View.OnTouchListener { _, event ->
+            when (event.action) {
+                MotionEvent.ACTION_DOWN -> {
+                    touchDownX = event.x
+                    touchDownY = event.y
+                    true
+                }
+                MotionEvent.ACTION_UP -> {
+                    val dx = event.x - touchDownX
+                    val dy = event.y - touchDownY
+                    if (kotlin.math.abs(dy) > dp(65) && kotlin.math.abs(dy) > kotlin.math.abs(dx) * 1.25f) {
+                        if (dy < 0) changeChannel(1) else changeChannel(-1)
+                    } else if (kotlin.math.abs(dx) < dp(35) && kotlin.math.abs(dy) < dp(35)) {
+                        toggleInfoBar()
+                    }
+                    true
+                }
+                MotionEvent.ACTION_CANCEL -> true
+                else -> true
+            }
+        }
+        root.setOnTouchListener(gestureListener)
+        playerView.setOnTouchListener(gestureListener)
         setContentView(root)
 
         try {
@@ -79,106 +135,160 @@ class MainActivity : AppCompatActivity() {
             exoPlayer.addListener(object : Player.Listener {
                 override fun onPlaybackStateChanged(playbackState: Int) {
                     if (playbackState == Player.STATE_BUFFERING) {
-                        if (player?.mediaItemCount == 0) {
-                            hint.text = "ARNIX TV\nПодключение к трансляции…"
-                        }
+                        hint.text = "ARNIX TV\nПодключение к каналу…"
                         hint.visibility = View.VISIBLE
                     } else if (playbackState == Player.STATE_READY) {
                         hint.visibility = View.GONE
                     }
                 }
-
                 override fun onPlayerError(error: PlaybackException) {
-                    hint.text = "Не удалось запустить канал\nПроверьте интернет или поток\nКод: ${error.errorCodeName}"
+                    hint.text = "Не удалось запустить канал\nКод: ${error.errorCodeName}"
                     hint.visibility = View.VISIBLE
                 }
             })
-            loadPlaylistAndPlayFirst()
+            loadPlaylist()
         } catch (error: Exception) {
             hint.text = "Ошибка запуска плеера\n${error.javaClass.simpleName}: ${error.message ?: "без подробностей"}"
             hint.visibility = View.VISIBLE
         }
+        handler.post(progressTicker)
     }
 
     private fun buildInfoBar(): LinearLayout {
-        val bar = LinearLayout(this).apply {
+        val panel = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(18), dp(14), dp(18), dp(14))
+            background = GradientDrawable(
+                GradientDrawable.Orientation.TOP_BOTTOM,
+                intArrayOf(0xD91A202A.toInt(), 0xC910151D.toInt())
+            ).apply {
+                cornerRadius = dp(20).toFloat()
+                setStroke(dp(1), 0x55FFFFFF)
+            }
+            elevation = dp(16).toFloat()
+        }
+
+        val top = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
-            setPadding(dp(22), dp(14), dp(22), dp(14))
-            setBackgroundColor(0xE820252D.toInt())
-            elevation = dp(12).toFloat()
         }
-        val logo = TextView(this).apply {
+        val logoFrame = FrameLayout(this).apply {
+            background = GradientDrawable().apply {
+                setColor(0xFF263342.toInt())
+                cornerRadius = dp(12).toFloat()
+            }
+        }
+        logoView = ImageView(this).apply { scaleType = ImageView.ScaleType.FIT_CENTER }
+        logoFrame.addView(logoView, FrameLayout.LayoutParams(-1, -1))
+        logoFallback = TextView(this).apply {
             text = "TV"
-            textSize = 21f
-            setTextColor(0xFFFFFFFF.toInt())
+            textSize = 20f
             gravity = Gravity.CENTER
-            setBackgroundColor(0xFF168BDB.toInt())
-            typeface = android.graphics.Typeface.DEFAULT_BOLD
+            setTextColor(Color.WHITE)
+            typeface = Typeface.DEFAULT_BOLD
         }
-        bar.addView(logo, LinearLayout.LayoutParams(dp(58), dp(58)))
-        val textColumn = LinearLayout(this).apply {
+        logoFrame.addView(logoFallback, FrameLayout.LayoutParams(-1, -1))
+        top.addView(logoFrame, LinearLayout.LayoutParams(dp(62), dp(62)))
+
+        val titles = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER_VERTICAL
-            setPadding(dp(16), 0, 0, 0)
+            setPadding(dp(14), 0, dp(8), 0)
         }
         channelNameView = TextView(this).apply {
             text = "ARNIX TV"
             textSize = 19f
-            setTextColor(0xFFFFFFFF.toInt())
-            typeface = android.graphics.Typeface.DEFAULT_BOLD
+            maxLines = 1
+            ellipsize = android.text.TextUtils.TruncateAt.END
+            setTextColor(Color.WHITE)
+            typeface = Typeface.DEFAULT_BOLD
         }
-        programmeView = TextView(this).apply {
-            text = "Загрузка плейлиста"
-            textSize = 14f
-            setTextColor(0xFFCAD2DC.toInt())
-            setPadding(0, dp(7), 0, 0)
+        channelMetaView = TextView(this).apply {
+            text = "Канал 0 • Прямой эфир"
+            textSize = 12f
+            setTextColor(0xFFB8C5D4.toInt())
+            setPadding(0, dp(4), 0, 0)
         }
-        textColumn.addView(channelNameView)
-        textColumn.addView(programmeView)
-        bar.addView(textColumn, LinearLayout.LayoutParams(0, -2, 1f))
+        titles.addView(channelNameView)
+        titles.addView(channelMetaView)
+        top.addView(titles, LinearLayout.LayoutParams(0, -2, 1f))
+
         val live = TextView(this).apply {
             text = "● LIVE"
-            textSize = 13f
-            setTextColor(0xFFFF6666.toInt())
-            typeface = android.graphics.Typeface.DEFAULT_BOLD
+            textSize = 12f
+            setTextColor(0xFFFF6868.toInt())
+            typeface = Typeface.DEFAULT_BOLD
+            setPadding(dp(8), dp(5), dp(8), dp(5))
+            background = GradientDrawable().apply {
+                setColor(0x332F8FFF)
+                cornerRadius = dp(20).toFloat()
+            }
         }
-        bar.addView(live)
-        return bar
+        top.addView(live)
+        panel.addView(top)
+
+        val separator = View(this).apply { setBackgroundColor(0x44FFFFFF) }
+        val sepParams = LinearLayout.LayoutParams(-1, dp(1))
+        sepParams.topMargin = dp(12)
+        sepParams.bottomMargin = dp(9)
+        panel.addView(separator, sepParams)
+
+        nowView = epgLine("СЕЙЧАС", "Загрузка программы…")
+        panel.addView(nowView)
+        nextView = epgLine("ДАЛЕЕ", "Нет данных программы")
+        val nextParams = LinearLayout.LayoutParams(-1, -2)
+        nextParams.topMargin = dp(7)
+        panel.addView(nextView, nextParams)
+
+        progress = ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal).apply {
+            max = 1000
+            progress = 0
+            progressTintList = android.content.res.ColorStateList.valueOf(0xFF45A5FF.toInt())
+            progressBackgroundTintList = android.content.res.ColorStateList.valueOf(0x55FFFFFF)
+        }
+        val progressParams = LinearLayout.LayoutParams(-1, dp(3))
+        progressParams.topMargin = dp(11)
+        panel.addView(progress, progressParams)
+        return panel
     }
 
-    private fun loadPlaylistAndPlayFirst() {
+    private fun epgLine(label: String, initial: String): TextView {
+        return TextView(this).apply {
+            text = "$label   $initial"
+            textSize = 13f
+            maxLines = 1
+            ellipsize = android.text.TextUtils.TruncateAt.END
+            setTextColor(0xFFE5EBF2.toInt())
+        }
+    }
+
+    private fun loadPlaylist() {
         hint.text = "ARNIX TV\nЗагрузка списка каналов…"
         Thread {
             var connection: HttpURLConnection? = null
             try {
                 connection = (URL(playlistUrl).openConnection() as HttpURLConnection).apply {
                     connectTimeout = 15000
-                    readTimeout = 20000
-                    requestMethod = "GET"
-                    setRequestProperty("User-Agent", "ARNIX-TV/0.2")
+                    readTimeout = 25000
+                    setRequestProperty("User-Agent", "ARNIX-TV/0.3")
                 }
                 val body = connection.inputStream.bufferedReader(Charsets.UTF_8).use { it.readText() }
-                val channels = parseM3u(body, playlistUrl)
+                val parsed = parseM3u(body, playlistUrl)
                 runOnUiThread {
                     if (isFinishing || isDestroyed) return@runOnUiThread
-                    val first = channels.firstOrNull()
-                    if (first == null) {
-                        hint.text = "В плейлисте нет поддерживаемых каналов\nНужны HTTP/HTTPS-потоки"
+                    channels = parsed
+                    if (channels.isEmpty()) {
+                        hint.text = "В плейлисте нет доступных HTTP/HTTPS-каналов"
                         hint.visibility = View.VISIBLE
-                        programmeView.text = "Нет доступных каналов"
                     } else {
-                        channelNameView.text = first.name
-                        programmeView.text = "Канал 1 • Первый в списке"
-                        playChannel(first)
+                        playChannel(0)
                     }
                 }
             } catch (error: Exception) {
                 runOnUiThread {
                     if (isFinishing || isDestroyed) return@runOnUiThread
-                    hint.text = "Не удалось загрузить плейлист\n${error.javaClass.simpleName}: ${error.message ?: "проверьте интернет"}"
+                    hint.text = "Ошибка загрузки списка\n${error.message ?: "проверьте интернет"}"
                     hint.visibility = View.VISIBLE
-                    programmeView.text = "Ошибка загрузки списка"
                 }
             } finally {
                 connection?.disconnect()
@@ -188,32 +298,167 @@ class MainActivity : AppCompatActivity() {
 
     private fun parseM3u(content: String, baseUrl: String): List<Channel> {
         val result = mutableListOf<Channel>()
-        var pendingName: String? = null
-        content.lineSequence().forEach { rawLine ->
-            val line = rawLine.trim()
-            when {
-                line.startsWith("#EXTINF", ignoreCase = true) -> {
-                    pendingName = line.substringAfterLast(',').trim().ifBlank { "Телеканал" }
+        var pending: Channel? = null
+        content.lineSequence().forEach { raw ->
+            val line = raw.trim()
+            if (line.startsWith("#EXTINF", true)) {
+                val name = line.substringAfterLast(',').trim().ifBlank { "Телеканал" }
+                fun attr(key: String): String {
+                    val match = Regex("""$key="([^"]*)"""", RegexOption.IGNORE_CASE).find(line)
+                    return match?.groupValues?.getOrNull(1).orEmpty()
                 }
-                line.isNotBlank() && !line.startsWith("#") && pendingName != null -> {
-                    val resolved = try { URL(URL(baseUrl), line).toString() } catch (_: Exception) { line }
-                    if (resolved.startsWith("http://", true) || resolved.startsWith("https://", true)) {
-                        result.add(Channel(pendingName!!, resolved))
-                    }
-                    pendingName = null
+                pending = Channel(name, "", attr("tvg-id"), attr("tvg-logo"), attr("group-title"))
+            } else if (line.isNotBlank() && !line.startsWith("#") && pending != null) {
+                val url = try { URL(URL(baseUrl), line).toString() } catch (_: Exception) { line }
+                if (url.startsWith("http://", true) || url.startsWith("https://", true)) {
+                    result.add(pending!!.copy(url = url))
                 }
+                pending = null
             }
         }
         return result
     }
 
-    private fun playChannel(channel: Channel) {
-        hint.text = "ARNIX TV\nПодключение к каналу: ${channel.name}"
+    private fun playChannel(index: Int) {
+        if (channels.isEmpty()) return
+        currentChannelIndex = ((index % channels.size) + channels.size) % channels.size
+        val channel = channels[currentChannelIndex]
+        channelNameView.text = channel.name
+        channelMetaView.text = "Канал ${currentChannelIndex + 1} из ${channels.size}" +
+            if (channel.group.isNotBlank()) " • ${channel.group}" else " • Прямой эфир"
+        nowView.text = "СЕЙЧАС   Загрузка программы…"
+        nextView.text = "ДАЛЕЕ   Загрузка программы…"
+        progress.progress = 0
+        loadLogo(channel)
+        hint.text = "ARNIX TV\nПодключение: ${channel.name}"
         hint.visibility = View.VISIBLE
         player?.setMediaItem(MediaItem.fromUri(channel.url))
         player?.prepare()
         player?.playWhenReady = true
         showInfoBar(true)
+        loadEpgFor(channel)
+    }
+
+    private fun changeChannel(step: Int) {
+        if (channels.isEmpty()) return
+        playChannel(currentChannelIndex + step)
+    }
+
+    private fun loadLogo(channel: Channel) {
+        logoView.setImageDrawable(null)
+        logoFallback.visibility = View.VISIBLE
+        if (channel.logo.isBlank()) return
+        Thread {
+            var connection: HttpURLConnection? = null
+            try {
+                connection = (URL(channel.logo).openConnection() as HttpURLConnection).apply {
+                    connectTimeout = 8000
+                    readTimeout = 8000
+                    instanceFollowRedirects = true
+                    setRequestProperty("User-Agent", "ARNIX-TV/0.3")
+                }
+                val bitmap = connection.inputStream.use { BitmapFactory.decodeStream(it) }
+                runOnUiThread {
+                    if (!isFinishing && !isDestroyed && currentChannelIndex >= 0 &&
+                        channels[currentChannelIndex].logo == channel.logo && bitmap != null) {
+                        logoView.setImageBitmap(bitmap)
+                        logoFallback.visibility = View.GONE
+                    }
+                }
+            } catch (_: Exception) {
+            } finally {
+                connection?.disconnect()
+            }
+        }.start()
+    }
+
+    private fun loadEpgFor(channel: Channel) {
+        Thread {
+            var connection: HttpURLConnection? = null
+            try {
+                connection = (URL(epgUrl).openConnection() as HttpURLConnection).apply {
+                    connectTimeout = 15000
+                    readTimeout = 30000
+                    instanceFollowRedirects = true
+                    setRequestProperty("User-Agent", "ARNIX-TV/0.3")
+                }
+                val programmes = parseEpg(connection.inputStream, channel.id)
+                runOnUiThread {
+                    if (isFinishing || isDestroyed || currentChannelIndex !in channels.indices ||
+                        channels[currentChannelIndex].id != channel.id) return@runOnUiThread
+                    val now = System.currentTimeMillis()
+                    val current = programmes.firstOrNull { now >= it.start && now < it.stop }
+                    val next = programmes.filter { it.start >= now }.minByOrNull { it.start }
+                    nowView.text = "СЕЙЧАС   ${current?.title ?: "Нет данных программы"}"
+                    nextView.text = "ДАЛЕЕ   ${next?.title ?: "Нет данных программы"}"
+                    updateProgress(current)
+                }
+            } catch (_: Exception) {
+                runOnUiThread {
+                    if (!isFinishing && !isDestroyed && currentChannelIndex >= 0 &&
+                        channels[currentChannelIndex].id == channel.id) {
+                        nowView.text = "СЕЙЧАС   Программа недоступна"
+                        nextView.text = "ДАЛЕЕ   Проверьте источник EPG"
+                    }
+                }
+            } finally {
+                connection?.disconnect()
+            }
+        }.start()
+    }
+
+    private fun parseEpg(input: java.io.InputStream, channelId: String): List<Programme> {
+        val parser = Xml.newPullParser()
+        parser.setFeature(XmlPullParser.FEATURE_PROCESS_NAMESPACES, false)
+        parser.setInput(input, "UTF-8")
+        val found = mutableListOf<Programme>()
+        var event = parser.eventType
+        var programmeChannel = ""
+        var start = 0L
+        var stop = 0L
+        var title = ""
+        while (event != XmlPullParser.END_DOCUMENT) {
+            if (event == XmlPullParser.START_TAG && parser.name == "programme") {
+                programmeChannel = parser.getAttributeValue(null, "channel").orEmpty()
+                start = parseXmltvTime(parser.getAttributeValue(null, "start").orEmpty())
+                stop = parseXmltvTime(parser.getAttributeValue(null, "stop").orEmpty())
+                title = ""
+            } else if (event == XmlPullParser.START_TAG && parser.name == "title" &&
+                programmeChannel == channelId) {
+                title = parser.nextText().trim()
+            } else if (event == XmlPullParser.END_TAG && parser.name == "programme") {
+                if (programmeChannel == channelId && title.isNotBlank() && stop > 0L) {
+                    found.add(Programme(title, start, stop))
+                }
+                programmeChannel = ""
+            }
+            event = parser.next()
+        }
+        return found
+    }
+
+    private fun parseXmltvTime(raw: String): Long {
+        return try {
+            val value = raw.trim()
+            val normalized = if (Regex(""".*[+-]\\d{4}$""").matches(value)) value
+                else "$value +0000"
+            val format = SimpleDateFormat("yyyyMMddHHmmss Z", Locale.US).apply {
+                timeZone = TimeZone.getTimeZone("UTC")
+                isLenient = true
+            }
+            format.parse(normalized)?.time ?: 0L
+        } catch (_: Exception) { 0L }
+    }
+
+    private fun updateProgress(programme: Programme? = null) {
+        if (currentChannelIndex !in channels.indices) return
+        // Refresh the progress bar from the visible programme time labels.
+        // If no programme is currently available, keep it empty.
+        if (programme != null) {
+            val duration = (programme.stop - programme.start).coerceAtLeast(1L)
+            val elapsed = (System.currentTimeMillis() - programme.start).coerceIn(0L, duration)
+            progress.progress = ((elapsed * 1000L) / duration).toInt()
+        }
     }
 
     private fun toggleInfoBar() = showInfoBar(!overlayVisible)
@@ -221,13 +466,14 @@ class MainActivity : AppCompatActivity() {
         overlayVisible = show
         infoBar.visibility = if (show) View.VISIBLE else View.GONE
         handler.removeCallbacks(hideOverlay)
-        if (show) handler.postDelayed(hideOverlay, 7000)
+        if (show) handler.postDelayed(hideOverlay, 9000)
     }
 
     override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
         when (keyCode) {
-            KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER,
-            KeyEvent.KEYCODE_DPAD_DOWN, KeyEvent.KEYCODE_MENU -> {
+            KeyEvent.KEYCODE_DPAD_UP -> { changeChannel(-1); return true }
+            KeyEvent.KEYCODE_DPAD_DOWN -> { changeChannel(1); return true }
+            KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER, KeyEvent.KEYCODE_MENU -> {
                 toggleInfoBar()
                 return true
             }
