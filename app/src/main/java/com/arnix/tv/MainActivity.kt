@@ -68,7 +68,7 @@ class MainActivity : AppCompatActivity() {
     private val epgCache = ConcurrentHashMap<String, List<Programme>>()
 
     private val playlistUrl = "https://raw.githubusercontent.com/arnix858-lang/ARNIX-IPTV/main/playlist.m3u"
-    private val epgUrl = "https://iptvx.one/EPG"
+    private var epgUrl: String? = null
     private val hideOverlay = Runnable { showInfoBar(false) }
     private val progressTicker = object : Runnable {
         override fun run() {
@@ -216,18 +216,13 @@ class MainActivity : AppCompatActivity() {
         titles.addView(channelMetaView)
         top.addView(titles, LinearLayout.LayoutParams(0, -2, 1f))
 
-        val live = TextView(this).apply {
-            text = "● LIVE"
-            textSize = 12f
-            setTextColor(0xFFFF6868.toInt())
-            typeface = Typeface.DEFAULT_BOLD
-            setPadding(dp(8), dp(5), dp(8), dp(5))
+        val accent = View(this).apply {
             background = GradientDrawable().apply {
-                setColor(0x332F8FFF)
-                cornerRadius = dp(20).toFloat()
+                setColor(0xFF55B7FF.toInt())
+                cornerRadius = dp(3).toFloat()
             }
         }
-        top.addView(live)
+        top.addView(accent, LinearLayout.LayoutParams(dp(4), dp(34)))
         panel.addView(top)
 
         val separator = View(this).apply { setBackgroundColor(0x44FFFFFF) }
@@ -276,6 +271,8 @@ class MainActivity : AppCompatActivity() {
                     setRequestProperty("User-Agent", "ARNIX-TV/0.3")
                 }
                 val body = connection.inputStream.bufferedReader(Charsets.UTF_8).use { it.readText() }
+                val header = body.lineSequence().firstOrNull { it.startsWith("#EXTM3U", true) }.orEmpty()
+                epgUrl = Regex("""(?:url-tvg|x-tvg-url)="([^"]+)"""", RegexOption.IGNORE_CASE).find(header)?.groupValues?.getOrNull(1)
                 val parsed = parseM3u(body, playlistUrl)
                 runOnUiThread {
                     if (isFinishing || isDestroyed) return@runOnUiThread
@@ -313,7 +310,7 @@ class MainActivity : AppCompatActivity() {
                 pending = Channel(name, "", attr("tvg-id"), attr("tvg-logo"), attr("group-title"))
             } else if (line.isNotBlank() && !line.startsWith("#") && pending != null) {
                 val url = try { URL(URL(baseUrl), line).toString() } catch (_: Exception) { line }
-                if (url.startsWith("http://", true) || url.startsWith("https://", true)) {
+                if (url.startsWith("http://", true) || url.startsWith("https://", true) || url.startsWith("udp://", true)) {
                     result.add(pending!!.copy(url = url))
                 }
                 pending = null
@@ -327,8 +324,9 @@ class MainActivity : AppCompatActivity() {
         currentChannelIndex = ((index % channels.size) + channels.size) % channels.size
         val channel = channels[currentChannelIndex]
         channelNameView.text = channel.name
-        channelMetaView.text = "Канал ${currentChannelIndex + 1} из ${channels.size}" +
-            if (channel.group.isNotBlank()) " • ${channel.group}" else " • Прямой эфир"
+        val playableCount = channels.count { it.url.startsWith("http://", true) || it.url.startsWith("https://", true) }
+        channelMetaView.text = "Канал ${currentChannelIndex + 1} из ${channels.size} • HTTP: $playableCount" +
+            if (channel.group.isNotBlank()) " • ${channel.group}" else ""
         nowView.text = "СЕЙЧАС   Загрузка программы…"
         nextView.text = "ДАЛЕЕ   Загрузка программы…"
         currentProgramme = null
@@ -341,6 +339,57 @@ class MainActivity : AppCompatActivity() {
         player?.playWhenReady = true
         showInfoBar(true)
         loadEpgFor(channel)
+    }
+
+
+    // Подогреваем HTTP/HLS соседних каналов заранее: запрашиваем короткий участок
+    // плейлиста и первый сегмент, не создавая второй видеодекодер.
+    private fun preloadAdjacentChannels() {
+        if (channels.isEmpty() || currentChannelIndex !in channels.indices) return
+        val candidates = listOf(currentChannelIndex - 1, currentChannelIndex + 1)
+            .map { ((it % channels.size) + channels.size) % channels.size }
+            .distinct()
+        candidates.mapNotNull { channels.getOrNull(it) }
+            .filter { it.url.startsWith("http://", true) || it.url.startsWith("https://", true) }
+            .forEach { channel -> Thread { warmStream(channel.url) }.start() }
+    }
+
+    private fun warmStream(streamUrl: String) {
+        var connection: HttpURLConnection? = null
+        try {
+            connection = (URL(streamUrl).openConnection() as HttpURLConnection).apply {
+                connectTimeout = 5000
+                readTimeout = 5000
+                instanceFollowRedirects = true
+                setRequestProperty("Range", "bytes=0-4095")
+                setRequestProperty("User-Agent", "ARNIX-TV/0.4")
+            }
+            val text = connection.inputStream.bufferedReader(Charsets.UTF_8).use { it.readText() }
+            val firstSegment = text.lineSequence().map { it.trim() }
+                .firstOrNull { it.isNotBlank() && !it.startsWith("#") }
+            if (firstSegment != null && (streamUrl.contains(".m3u8", true) || text.startsWith("#EXTM3U"))) {
+                val segmentUrl = try { URL(URL(streamUrl), firstSegment).toString() } catch (_: Exception) { return }
+                var segmentConnection: HttpURLConnection? = null
+                try {
+                    segmentConnection = (URL(segmentUrl).openConnection() as HttpURLConnection).apply {
+                        connectTimeout = 5000
+                        readTimeout = 5000
+                        instanceFollowRedirects = true
+                        setRequestProperty("Range", "bytes=0-4095")
+                        setRequestProperty("User-Agent", "ARNIX-TV/0.4")
+                    }
+                    segmentConnection.inputStream.use { input ->
+                        val buffer = ByteArray(4096)
+                        input.read(buffer)
+                    }
+                } finally {
+                    segmentConnection?.disconnect()
+                }
+            }
+        } catch (_: Exception) {
+        } finally {
+            connection?.disconnect()
+        }
     }
 
     private fun changeChannel(step: Int) {
@@ -377,6 +426,12 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun loadEpgFor(channel: Channel) {
+        val source = epgUrl
+        if (source.isNullOrBlank() || channel.id.isBlank()) {
+            nowView.text = "СЕЙЧАС   Нет данных EPG в плейлисте"
+            nextView.text = "ДАЛЕЕ   Нет данных EPG в плейлисте"
+            return
+        }
         val cached = epgCache[channel.id]
         if (cached != null) {
             displayEpg(channel, cached)
@@ -385,7 +440,7 @@ class MainActivity : AppCompatActivity() {
         Thread {
             var connection: HttpURLConnection? = null
             try {
-                connection = (URL(epgUrl).openConnection() as HttpURLConnection).apply {
+                connection = (URL(source).openConnection() as HttpURLConnection).apply {
                     connectTimeout = 15000
                     readTimeout = 30000
                     instanceFollowRedirects = true
