@@ -452,8 +452,8 @@ class MainActivity : AppCompatActivity() {
     private fun parseXmltvTime(raw: String): Long {
         return try {
             val value = raw.trim()
-            val normalized = if (Regex(""".*[+-]\\d{4}$""").matches(value)) value
-                else "$value +0000"
+            val hasOffset = value.length >= 5 && (value[value.length - 5] == '+' || value[value.length - 5] == '-') && value.takeLast(4).all { it.isDigit() }
+            val normalized = if (hasOffset) value else "$value +0000"
             val format = SimpleDateFormat("yyyyMMddHHmmss Z", Locale.US).apply {
                 timeZone = TimeZone.getTimeZone("UTC")
                 isLenient = true
