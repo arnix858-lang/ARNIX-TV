@@ -339,8 +339,7 @@ class MainActivity : AppCompatActivity() {
             hint.text = "Канал есть в плейлисте, но использует UDP multicast.\\nДля просмотра нужна сеть провайдера с поддержкой multicast."
             hint.visibility = View.VISIBLE
         } else {
-            hint.text = "ARNIX TV\\nПодключение: ${channel.name}"
-            hint.visibility = View.VISIBLE
+            hint.visibility = View.GONE
             player?.setMediaItem(MediaItem.fromUri(channel.url))
             player?.prepare()
             player?.playWhenReady = true
