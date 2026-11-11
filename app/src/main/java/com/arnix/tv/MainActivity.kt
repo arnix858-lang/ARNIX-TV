@@ -69,6 +69,9 @@ class MainActivity : AppCompatActivity() {
     private lateinit var progress: ProgressBar
     private lateinit var channelDrawer: FrameLayout
     private lateinit var channelListContainer: LinearLayout
+    private lateinit var categoryContainer: LinearLayout
+    private var selectedCategory = "Все"
+    private val drawerLogoCache = ConcurrentHashMap<String, android.graphics.Bitmap>()
     private val handler = Handler(Looper.getMainLooper())
     private var overlayVisible = false
     private var touchDownX = 0f
@@ -279,7 +282,7 @@ class MainActivity : AppCompatActivity() {
         }
         val drawer = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(dp(18), dp(22), dp(14), dp(12))
+            setPadding(dp(16), dp(20), dp(12), dp(12))
             background = GradientDrawable().apply {
                 setColor(0xF0182533.toInt())
                 cornerRadii = floatArrayOf(0f, 0f, dp(22).toFloat(), dp(22).toFloat(),
@@ -296,26 +299,57 @@ class MainActivity : AppCompatActivity() {
             setPadding(0, 0, 0, dp(5))
         }
         val subtitle = TextView(this).apply {
-            text = "Выберите канал для просмотра"
-            textSize = 12f
+            text = "Свайп влево или вправо — смена категории"
+            textSize = 11f
             setTextColor(0xFF9FB2C5.toInt())
-            setPadding(0, 0, 0, dp(16))
+            setPadding(0, 0, 0, dp(10))
         }
         drawer.addView(header)
         drawer.addView(subtitle)
-        val scroll = ScrollView(this)
+
+        val categoryScroll = HorizontalScrollView(this).apply {
+            isHorizontalScrollBarEnabled = false
+            clipToPadding = false
+        }
+        categoryContainer = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+        }
+        categoryScroll.addView(categoryContainer, ViewGroup.LayoutParams(-2, -2))
+        drawer.addView(categoryScroll, LinearLayout.LayoutParams(-1, dp(42)).apply {
+            bottomMargin = dp(8)
+        })
+
+        val scroll = ScrollView(this).apply {
+            isVerticalScrollBarEnabled = false
+        }
         channelListContainer = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
         scroll.addView(channelListContainer, ViewGroup.LayoutParams(-1, -2))
+        var swipeStartX = 0f
+        scroll.setOnTouchListener { _, event ->
+            when (event.action) {
+                MotionEvent.ACTION_DOWN -> { swipeStartX = event.x; false }
+                MotionEvent.ACTION_UP -> {
+                    val dx = event.x - swipeStartX
+                    if (kotlin.math.abs(dx) > dp(65)) {
+                        changeDrawerCategory(if (dx < 0) 1 else -1)
+                    }
+                    false
+                }
+                else -> false
+            }
+        }
         drawer.addView(scroll, LinearLayout.LayoutParams(-1, 0, 1f))
         val close = TextView(this).apply {
             text = "←  Закрыть"
             textSize = 14f
             setTextColor(0xFF65C0FF.toInt())
             setPadding(0, dp(14), 0, dp(8))
+            isFocusable = true
             setOnClickListener { showChannelDrawer(false) }
         }
         drawer.addView(close)
-        val params = FrameLayout.LayoutParams(dp(320), -1, Gravity.START)
+        val params = FrameLayout.LayoutParams(dp(340), -1, Gravity.START)
         overlay.addView(drawer, params)
         return overlay
     }
@@ -324,20 +358,65 @@ class MainActivity : AppCompatActivity() {
         if (!::channelDrawer.isInitialized) return
         channelDrawer.visibility = if (show) View.VISIBLE else View.GONE
         if (show) {
+            if (selectedCategory !in drawerCategories()) selectedCategory = "Все"
             populateChannelDrawer()
             showInfoBar(false)
         }
     }
 
+    private fun drawerCategories(): List<String> =
+        listOf("Все") + channels.map { it.group.trim() }.filter { it.isNotBlank() }.distinct().sorted()
+
+    private fun changeDrawerCategory(direction: Int) {
+        val categories = drawerCategories()
+        if (categories.isEmpty()) return
+        val current = categories.indexOf(selectedCategory).let { if (it < 0) 0 else it }
+        selectedCategory = categories[(current + direction + categories.size) % categories.size]
+        populateChannelDrawer()
+    }
+
     private fun populateChannelDrawer() {
-        if (!::channelListContainer.isInitialized) return
+        if (!::channelListContainer.isInitialized || !::categoryContainer.isInitialized) return
+        val categories = drawerCategories()
+        if (selectedCategory !in categories) selectedCategory = "Все"
+        categoryContainer.removeAllViews()
+        categories.forEach { category ->
+            val active = category == selectedCategory
+            val chip = TextView(this).apply {
+                text = category
+                textSize = 12f
+                typeface = if (active) Typeface.DEFAULT_BOLD else Typeface.DEFAULT
+                setTextColor(if (active) Color.WHITE else 0xFFB8C8D8.toInt())
+                gravity = Gravity.CENTER
+                setPadding(dp(13), dp(8), dp(13), dp(8))
+                background = GradientDrawable().apply {
+                    setColor(if (active) 0xFF2389D7.toInt() else 0x332F455A)
+                    cornerRadius = dp(18).toFloat()
+                }
+                isFocusable = true
+                isClickable = true
+                setOnClickListener {
+                    selectedCategory = category
+                    populateChannelDrawer()
+                }
+            }
+            categoryContainer.addView(chip, LinearLayout.LayoutParams(-2, -2).apply {
+                rightMargin = dp(7)
+            })
+        }
+
         channelListContainer.removeAllViews()
-        channels.forEachIndexed { index, channel ->
+        val visibleChannels = channels.withIndex().filter {
+            selectedCategory == "Все" || it.value.group.trim() == selectedCategory
+        }
+        visibleChannels.forEach { indexed ->
+            val index = indexed.index
+            val channel = indexed.value
             val selected = index == currentChannelIndex
             val item = LinearLayout(this).apply {
                 orientation = LinearLayout.HORIZONTAL
                 gravity = Gravity.CENTER_VERTICAL
-                setPadding(dp(10), dp(11), dp(8), dp(11))
+                setPadding(dp(8), dp(8), dp(8), dp(8))
                 background = GradientDrawable().apply {
                     setColor(if (selected) 0x553FAFFF else Color.TRANSPARENT)
                     cornerRadius = dp(10).toFloat()
@@ -351,25 +430,71 @@ class MainActivity : AppCompatActivity() {
             }
             val number = TextView(this).apply {
                 text = (index + 1).toString().padStart(2, '0')
-                textSize = 12f
+                textSize = 11f
                 typeface = Typeface.DEFAULT_BOLD
                 setTextColor(if (selected) 0xFF65C0FF.toInt() else 0xFF91A5B9.toInt())
                 gravity = Gravity.CENTER
             }
-            item.addView(number, LinearLayout.LayoutParams(dp(34), -2))
+            item.addView(number, LinearLayout.LayoutParams(dp(28), -2))
+
+            val logo = ImageView(this).apply {
+                scaleType = ImageView.ScaleType.FIT_CENTER
+                setBackgroundColor(0x222FFFFFF)
+                if (channel.logo.isBlank()) setImageResource(android.R.drawable.ic_menu_info_details)
+            }
+            item.addView(logo, LinearLayout.LayoutParams(dp(38), dp(30)).apply {
+                rightMargin = dp(9)
+            })
+            loadDrawerLogo(channel, logo)
+
             val title = TextView(this).apply {
                 text = channel.name
-                textSize = 14f
+                textSize = 13f
                 maxLines = 1
                 ellipsize = android.text.TextUtils.TruncateAt.END
                 setTextColor(if (selected) Color.WHITE else 0xFFE0E8F0.toInt())
-                setPadding(dp(8), 0, 0, 0)
             }
             item.addView(title, LinearLayout.LayoutParams(0, -2, 1f))
             channelListContainer.addView(item, LinearLayout.LayoutParams(-1, -2).apply {
                 bottomMargin = dp(3)
             })
         }
+        if (visibleChannels.isEmpty()) {
+            channelListContainer.addView(TextView(this).apply {
+                text = "В этой категории пока нет каналов"
+                setTextColor(0xFF9FB2C5.toInt())
+                textSize = 13f
+                setPadding(dp(8), dp(18), dp(8), dp(18))
+            })
+        }
+    }
+
+    private fun loadDrawerLogo(channel: Channel, target: ImageView) {
+        if (channel.logo.isBlank()) return
+        drawerLogoCache[channel.logo]?.let { target.setImageBitmap(it); return }
+        Thread {
+            var connection: HttpURLConnection? = null
+            try {
+                connection = (URL(channel.logo).openConnection() as HttpURLConnection).apply {
+                    connectTimeout = 4000
+                    readTimeout = 4000
+                    instanceFollowRedirects = true
+                    setRequestProperty("User-Agent", "ARNIX-TV/0.3")
+                }
+                val bitmap = connection.inputStream.use { BitmapFactory.decodeStream(it) }
+                if (bitmap != null) {
+                    drawerLogoCache[channel.logo] = bitmap
+                    runOnUiThread {
+                        if (!isFinishing && !isDestroyed && target.isAttachedToWindow) {
+                            target.setImageBitmap(bitmap)
+                        }
+                    }
+                }
+            } catch (_: Exception) {
+            } finally {
+                connection?.disconnect()
+            }
+        }.start()
     }
 
     private fun epgLine(label: String, initial: String): TextView {
