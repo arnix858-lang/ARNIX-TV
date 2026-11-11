@@ -21,6 +21,7 @@ import android.widget.FrameLayout
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.ProgressBar
+import android.widget.ScrollView
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.WindowCompat
@@ -65,6 +66,8 @@ class MainActivity : AppCompatActivity() {
     private lateinit var nowView: TextView
     private lateinit var nextView: TextView
     private lateinit var progress: ProgressBar
+    private lateinit var channelDrawer: FrameLayout
+    private lateinit var channelListContainer: LinearLayout
     private val handler = Handler(Looper.getMainLooper())
     private var overlayVisible = false
     private var touchDownX = 0f
@@ -120,6 +123,10 @@ class MainActivity : AppCompatActivity() {
         root.addView(infoBar, infoParams)
         infoBar.visibility = View.GONE
 
+        channelDrawer = buildChannelDrawer()
+        root.addView(channelDrawer, FrameLayout.LayoutParams(-1, -1))
+        channelDrawer.visibility = View.GONE
+
         val gestureListener = View.OnTouchListener { _, event ->
             when (event.action) {
                 MotionEvent.ACTION_DOWN -> {
@@ -130,7 +137,7 @@ class MainActivity : AppCompatActivity() {
                 MotionEvent.ACTION_UP -> {
                     val dx = event.x - touchDownX
                     val dy = event.y - touchDownY
-                    if (kotlin.math.abs(dy) > dp(65) && kotlin.math.abs(dy) > kotlin.math.abs(dx) * 1.25f) {
+                    if (dx > dp(80) && touchDownX < dp(90) && kotlin.math.abs(dx) > kotlin.math.abs(dy) * 1.2f) {\n                        showChannelDrawer(true)\n                    } else if (kotlin.math.abs(dy) > dp(65) && kotlin.math.abs(dy) > kotlin.math.abs(dx) * 1.25f) {
                         if (dy < 0) changeChannel(1) else changeChannel(-1)
                     } else if (kotlin.math.abs(dx) < dp(35) && kotlin.math.abs(dy) < dp(35)) {
                         toggleInfoBar()
@@ -244,10 +251,6 @@ class MainActivity : AppCompatActivity() {
 
         nowView = epgLine("СЕЙЧАС", "Загрузка программы…")
         panel.addView(nowView)
-        nextView = epgLine("ДАЛЕЕ", "Нет данных программы")
-        val nextParams = LinearLayout.LayoutParams(-1, -2)
-        nextParams.topMargin = dp(7)
-        panel.addView(nextView, nextParams)
 
         progress = ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal).apply {
             max = 1000
@@ -255,10 +258,115 @@ class MainActivity : AppCompatActivity() {
             progressTintList = android.content.res.ColorStateList.valueOf(0xFF45A5FF.toInt())
             progressBackgroundTintList = android.content.res.ColorStateList.valueOf(0x55FFFFFF)
         }
-        val progressParams = LinearLayout.LayoutParams(-1, dp(3))
-        progressParams.topMargin = dp(11)
+        val progressParams = LinearLayout.LayoutParams(-1, dp(4))
+        progressParams.topMargin = dp(5)
+        progressParams.bottomMargin = dp(7)
         panel.addView(progress, progressParams)
+
+        nextView = epgLine("ДАЛЕЕ", "Нет данных программы")
+        panel.addView(nextView)
         return panel
+    }
+
+    private fun buildChannelDrawer(): FrameLayout {
+        val overlay = FrameLayout(this).apply {
+            setBackgroundColor(0x99000000.toInt())
+            isClickable = true
+            setOnClickListener { showChannelDrawer(false) }
+        }
+        val drawer = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(18), dp(22), dp(14), dp(12))
+            background = GradientDrawable().apply {
+                setColor(0xF0182533.toInt())
+                cornerRadii = floatArrayOf(0f, 0f, dp(22).toFloat(), dp(22).toFloat(),
+                    dp(22).toFloat(), dp(22).toFloat(), 0f, 0f)
+                setStroke(dp(1), 0x6655B7FF)
+            }
+            isClickable = true
+        }
+        val header = TextView(this).apply {
+            text = "ТЕЛЕКАНАЛЫ"
+            textSize = 18f
+            typeface = Typeface.DEFAULT_BOLD
+            setTextColor(Color.WHITE)
+            setPadding(0, 0, 0, dp(5))
+        }
+        val subtitle = TextView(this).apply {
+            text = "Выберите канал для просмотра"
+            textSize = 12f
+            setTextColor(0xFF9FB2C5.toInt())
+            setPadding(0, 0, 0, dp(16))
+        }
+        drawer.addView(header)
+        drawer.addView(subtitle)
+        val scroll = ScrollView(this)
+        channelListContainer = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        scroll.addView(channelListContainer, ScrollView.LayoutParams(-1, -2))
+        drawer.addView(scroll, LinearLayout.LayoutParams(-1, 0, 1f))
+        val close = TextView(this).apply {
+            text = "←  Закрыть"
+            textSize = 14f
+            setTextColor(0xFF65C0FF.toInt())
+            setPadding(0, dp(14), 0, dp(8))
+            setOnClickListener { showChannelDrawer(false) }
+        }
+        drawer.addView(close)
+        val params = FrameLayout.LayoutParams(dp(320), -1, Gravity.START)
+        overlay.addView(drawer, params)
+        return overlay
+    }
+
+    private fun showChannelDrawer(show: Boolean) {
+        if (!::channelDrawer.isInitialized) return
+        channelDrawer.visibility = if (show) View.VISIBLE else View.GONE
+        if (show) {
+            populateChannelDrawer()
+            showInfoBar(false)
+        }
+    }
+
+    private fun populateChannelDrawer() {
+        if (!::channelListContainer.isInitialized) return
+        channelListContainer.removeAllViews()
+        channels.forEachIndexed { index, channel ->
+            val selected = index == currentChannelIndex
+            val item = LinearLayout(this).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER_VERTICAL
+                setPadding(dp(10), dp(11), dp(8), dp(11))
+                background = GradientDrawable().apply {
+                    setColor(if (selected) 0x553FAFFF else Color.TRANSPARENT)
+                    cornerRadius = dp(10).toFloat()
+                }
+                isClickable = true
+                isFocusable = true
+                setOnClickListener {
+                    showChannelDrawer(false)
+                    playChannel(index)
+                }
+            }
+            val number = TextView(this).apply {
+                text = (index + 1).toString().padStart(2, '0')
+                textSize = 12f
+                typeface = Typeface.DEFAULT_BOLD
+                setTextColor(if (selected) 0xFF65C0FF.toInt() else 0xFF91A5B9.toInt())
+                gravity = Gravity.CENTER
+            }
+            item.addView(number, LinearLayout.LayoutParams(dp(34), -2))
+            val title = TextView(this).apply {
+                text = channel.name
+                textSize = 14f
+                maxLines = 1
+                ellipsize = android.text.TextUtils.TruncateAt.END
+                setTextColor(if (selected) Color.WHITE else 0xFFE0E8F0.toInt())
+                setPadding(dp(8), 0, 0, 0)
+            }
+            item.addView(title, LinearLayout.LayoutParams(0, -2, 1f))
+            channelListContainer.addView(item, LinearLayout.LayoutParams(-1, -2).apply {
+                bottomMargin = dp(3)
+            })
+        }
     }
 
     private fun epgLine(label: String, initial: String): TextView {
