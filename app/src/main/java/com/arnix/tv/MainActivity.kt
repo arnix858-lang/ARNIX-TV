@@ -137,7 +137,9 @@ class MainActivity : AppCompatActivity() {
                 MotionEvent.ACTION_UP -> {
                     val dx = event.x - touchDownX
                     val dy = event.y - touchDownY
-                    if (dx > dp(80) && touchDownX < dp(90) && kotlin.math.abs(dx) > kotlin.math.abs(dy) * 1.2f) {\n                        showChannelDrawer(true)\n                    } else if (kotlin.math.abs(dy) > dp(65) && kotlin.math.abs(dy) > kotlin.math.abs(dx) * 1.25f) {
+                    if (dx > dp(80) && touchDownX < dp(90) && kotlin.math.abs(dx) > kotlin.math.abs(dy) * 1.2f) {
+                        showChannelDrawer(true)
+                    } else if (kotlin.math.abs(dy) > dp(65) && kotlin.math.abs(dy) > kotlin.math.abs(dx) * 1.25f) {
                         if (dy < 0) changeChannel(1) else changeChannel(-1)
                     } else if (kotlin.math.abs(dx) < dp(35) && kotlin.math.abs(dy) < dp(35)) {
                         toggleInfoBar()
