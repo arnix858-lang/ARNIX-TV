@@ -29,6 +29,8 @@ import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.media3.ui.PlayerView
 import org.xmlpull.v1.XmlPullParser
+import java.io.BufferedInputStream
+import java.util.zip.GZIPInputStream
 import java.net.HttpURLConnection
 import java.net.URL
 import java.text.SimpleDateFormat
@@ -69,6 +71,7 @@ class MainActivity : AppCompatActivity() {
 
     private val playlistUrl = "http://cdntv.online/high/9n3hebsjat/mpeg.m3u"
     private var epgUrl: String? = null
+    private val fallbackEpgUrl: String? = null // Отдельный XMLTV URL, если его нет в заголовке M3U.
     private val hideOverlay = Runnable { showInfoBar(false) }
     private val progressTicker = object : Runnable {
         override fun run() {
@@ -138,8 +141,7 @@ class MainActivity : AppCompatActivity() {
             exoPlayer.addListener(object : Player.Listener {
                 override fun onPlaybackStateChanged(playbackState: Int) {
                     if (playbackState == Player.STATE_BUFFERING) {
-                        hint.text = "ARNIX TV\nПодключение к каналу…"
-                        hint.visibility = View.VISIBLE
+                        hint.visibility = View.GONE
                     } else if (playbackState == Player.STATE_READY) {
                         hint.visibility = View.GONE
                     }
@@ -161,14 +163,12 @@ class MainActivity : AppCompatActivity() {
         val panel = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(18), dp(14), dp(18), dp(14))
-            background = GradientDrawable(
-                GradientDrawable.Orientation.TOP_BOTTOM,
-                intArrayOf(0xD91A202A.toInt(), 0xC910151D.toInt())
-            ).apply {
+            background = GradientDrawable().apply {
+                setColor(Color.TRANSPARENT)
                 cornerRadius = dp(20).toFloat()
-                setStroke(dp(1), 0x55FFFFFF)
+                setStroke(dp(1), 0xCCFFFFFF.toInt())
             }
-            elevation = dp(16).toFloat()
+            elevation = dp(8).toFloat()
         }
 
         val top = LinearLayout(this).apply {
@@ -431,36 +431,46 @@ class MainActivity : AppCompatActivity() {
         }.start()
     }
 
+    private fun normalizeChannelName(value: String): String =
+        value.lowercase(Locale.ROOT).replace(Regex("[^\\p{L}\\p{N}]"), "")
+
     private fun loadEpgFor(channel: Channel) {
-        val source = epgUrl
-        if (source.isNullOrBlank() || channel.id.isBlank()) {
-            nowView.text = "СЕЙЧАС   Нет данных EPG в плейлисте"
-            nextView.text = "ДАЛЕЕ   Нет данных EPG в плейлисте"
+        val source = epgUrl?.takeIf { it.isNotBlank() } ?: fallbackEpgUrl
+        if (source.isNullOrBlank()) {
+            nowView.text = "СЕЙЧАС   Источник EPG не задан"
+            nextView.text = "ДАЛЕЕ   Добавьте XMLTV-адрес в плейлист"
             return
         }
-        val cached = epgCache[channel.id]
-        if (cached != null) {
-            displayEpg(channel, cached)
-            return
-        }
+        val cacheKey = channel.id.ifBlank { normalizeChannelName(channel.name) }
+        epgCache[cacheKey]?.let { displayEpg(channel, it); return }
         Thread {
             var connection: HttpURLConnection? = null
             try {
                 connection = (URL(source).openConnection() as HttpURLConnection).apply {
-                    connectTimeout = 15000
-                    readTimeout = 30000
+                    connectTimeout = 20000
+                    readTimeout = 45000
                     instanceFollowRedirects = true
-                    setRequestProperty("User-Agent", "ARNIX-TV/0.3")
+                    setRequestProperty("User-Agent", "ARNIX-TV/0.5")
+                    setRequestProperty("Accept-Encoding", "gzip")
                 }
-                val programmes = parseEpg(connection.inputStream, channel.id)
-                epgCache[channel.id] = programmes
+                val raw = BufferedInputStream(connection.inputStream)
+                raw.mark(2)
+                val first = raw.read()
+                val second = raw.read()
+                raw.reset()
+                val gzip = source.substringBefore('?').endsWith(".gz", true) ||
+                    connection.contentEncoding?.contains("gzip", true) == true ||
+                    (first == 0x1f && second == 0x8b)
+                val input = if (gzip) GZIPInputStream(raw) else raw
+                val programmes = parseEpg(input, channel)
+                epgCache[cacheKey] = programmes
                 runOnUiThread { displayEpg(channel, programmes) }
             } catch (_: Exception) {
                 runOnUiThread {
                     if (!isFinishing && !isDestroyed && currentChannelIndex >= 0 &&
-                        channels[currentChannelIndex].id == channel.id) {
-                        nowView.text = "СЕЙЧАС   Программа недоступна"
-                        nextView.text = "ДАЛЕЕ   Проверьте источник EPG"
+                        channels[currentChannelIndex].name == channel.name) {
+                        nowView.text = "СЕЙЧАС   Не удалось загрузить EPG"
+                        nextView.text = "ДАЛЕЕ   Проверьте XMLTV-источник"
                     }
                 }
             } finally {
@@ -480,34 +490,50 @@ class MainActivity : AppCompatActivity() {
         updateProgress()
     }
 
-    private fun parseEpg(input: java.io.InputStream, channelId: String): List<Programme> {
+    private fun parseEpg(input: java.io.InputStream, target: Channel): List<Programme> {
         val parser = Xml.newPullParser()
         parser.setFeature(XmlPullParser.FEATURE_PROCESS_NAMESPACES, false)
         parser.setInput(input, "UTF-8")
         val found = mutableListOf<Programme>()
-        var event = parser.eventType
+        val targetName = normalizeChannelName(target.name)
+        val matchedIds = mutableSetOf<String>()
+        if (target.id.isNotBlank()) matchedIds.add(target.id)
+        var readingChannel = ""
+        var readingDisplayName = false
         var programmeChannel = ""
         var start = 0L
         var stop = 0L
         var title = ""
+        var event = parser.eventType
         while (event != XmlPullParser.END_DOCUMENT) {
-            if (event == XmlPullParser.START_TAG && parser.name == "programme") {
+            if (event == XmlPullParser.START_TAG && parser.name == "channel") {
+                readingChannel = parser.getAttributeValue(null, "id").orEmpty()
+            } else if (event == XmlPullParser.START_TAG && parser.name == "display-name" && readingChannel.isNotBlank()) {
+                readingDisplayName = true
+            } else if (event == XmlPullParser.START_TAG && parser.name == "programme") {
                 programmeChannel = parser.getAttributeValue(null, "channel").orEmpty()
                 start = parseXmltvTime(parser.getAttributeValue(null, "start").orEmpty())
                 stop = parseXmltvTime(parser.getAttributeValue(null, "stop").orEmpty())
                 title = ""
             } else if (event == XmlPullParser.START_TAG && parser.name == "title" &&
-                programmeChannel == channelId) {
+                matchedIds.contains(programmeChannel)) {
                 title = parser.nextText().trim()
             } else if (event == XmlPullParser.END_TAG && parser.name == "programme") {
-                if (programmeChannel == channelId && title.isNotBlank() && stop > 0L) {
+                if (matchedIds.contains(programmeChannel) && title.isNotBlank() && stop > start) {
                     found.add(Programme(title, start, stop))
                 }
                 programmeChannel = ""
+            } else if (event == XmlPullParser.END_TAG && parser.name == "channel") {
+                readingChannel = ""
+            } else if (event == XmlPullParser.END_TAG && parser.name == "display-name") {
+                readingDisplayName = false
+            } else if (event == XmlPullParser.TEXT && readingDisplayName &&
+                normalizeChannelName(parser.text) == targetName && readingChannel.isNotBlank()) {
+                matchedIds.add(readingChannel)
             }
             event = parser.next()
         }
-        return found
+        return found.sortedBy { it.start }
     }
 
     private fun parseXmltvTime(raw: String): Long {
