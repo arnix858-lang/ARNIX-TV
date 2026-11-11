@@ -27,6 +27,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var hint: TextView
     private val handler = Handler(Looper.getMainLooper())
     private var overlayVisible = false
+    private val defaultStreamUrl = "http://cdntv.online/hls/9n3hebsjat/playlist.m3u8"
     private val hideOverlay = Runnable { showInfoBar(false) }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -64,7 +65,8 @@ class MainActivity : AppCompatActivity() {
                 hint.visibility = if (playbackState == Player.STATE_IDLE) View.VISIBLE else View.GONE
             }
         })
-        // Example: playChannel("https://example.com/live/playlist.m3u8")
+        // Автоматически запускаем заданный пользователем поток при старте приложения.
+        playChannel(defaultStreamUrl)
     }
 
     private fun buildInfoBar(): LinearLayout {
@@ -90,13 +92,13 @@ class MainActivity : AppCompatActivity() {
             setPadding(dp(16), 0, 0, 0)
         }
         val channel = TextView(this).apply {
-            text = "Канал не выбран"
+            text = "ARNIX TV • Прямой эфир"
             textSize = 19f
             setTextColor(0xFFFFFFFF.toInt())
             typeface = android.graphics.Typeface.DEFAULT_BOLD
         }
         val programme = TextView(this).apply {
-            text = "Добавьте IPTV-плейлист • EPG появится здесь"
+            text = "Трансляция по умолчанию"
             textSize = 14f
             setTextColor(0xFFCAD2DC.toInt())
             setPadding(0, dp(7), 0, 0)
