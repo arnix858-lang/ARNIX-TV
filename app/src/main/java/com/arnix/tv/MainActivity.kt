@@ -20,15 +20,24 @@ import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.media3.ui.PlayerView
+import java.net.HttpURLConnection
+import java.net.URL
 
 class MainActivity : AppCompatActivity() {
+    private data class Channel(val name: String, val url: String)
+
     private var player: ExoPlayer? = null
     private lateinit var playerView: PlayerView
     private lateinit var infoBar: LinearLayout
     private lateinit var hint: TextView
+    private lateinit var channelNameView: TextView
+    private lateinit var programmeView: TextView
     private val handler = Handler(Looper.getMainLooper())
     private var overlayVisible = false
-    private val defaultStreamUrl = "http://cdntv.online/hls/9n3hebsjat/playlist.m3u8"
+
+    // Главный M3U-плейлист проекта ARNIX IPTV.
+    private val playlistUrl =
+        "https://raw.githubusercontent.com/arnix858-lang/ARNIX-IPTV/main/playlist.m3u"
     private val hideOverlay = Runnable { showInfoBar(false) }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -46,7 +55,7 @@ class MainActivity : AppCompatActivity() {
         root.addView(playerView, FrameLayout.LayoutParams(-1, -1))
 
         hint = TextView(this).apply {
-            text = "ARNIX TV\nПодключение к трансляции…"
+            text = "ARNIX TV\nЗагрузка списка каналов…"
             setTextColor(0xFFB8C2CC.toInt())
             textSize = 17f
             gravity = Gravity.CENTER
@@ -70,7 +79,9 @@ class MainActivity : AppCompatActivity() {
             exoPlayer.addListener(object : Player.Listener {
                 override fun onPlaybackStateChanged(playbackState: Int) {
                     if (playbackState == Player.STATE_BUFFERING) {
-                        hint.text = "ARNIX TV\nПодключение к трансляции…"
+                        if (player?.mediaItemCount == 0) {
+                            hint.text = "ARNIX TV\nПодключение к трансляции…"
+                        }
                         hint.visibility = View.VISIBLE
                     } else if (playbackState == Player.STATE_READY) {
                         hint.visibility = View.GONE
@@ -78,11 +89,11 @@ class MainActivity : AppCompatActivity() {
                 }
 
                 override fun onPlayerError(error: PlaybackException) {
-                    hint.text = "Не удалось запустить трансляцию\nПроверьте интернет или адрес потока\nКод: ${error.errorCodeName}"
+                    hint.text = "Не удалось запустить канал\nПроверьте интернет или поток\nКод: ${error.errorCodeName}"
                     hint.visibility = View.VISIBLE
                 }
             })
-            playChannel(defaultStreamUrl)
+            loadPlaylistAndPlayFirst()
         } catch (error: Exception) {
             hint.text = "Ошибка запуска плеера\n${error.javaClass.simpleName}: ${error.message ?: "без подробностей"}"
             hint.visibility = View.VISIBLE
@@ -111,20 +122,20 @@ class MainActivity : AppCompatActivity() {
             gravity = Gravity.CENTER_VERTICAL
             setPadding(dp(16), 0, 0, 0)
         }
-        val channel = TextView(this).apply {
-            text = "ARNIX TV • Прямой эфир"
+        channelNameView = TextView(this).apply {
+            text = "ARNIX TV"
             textSize = 19f
             setTextColor(0xFFFFFFFF.toInt())
             typeface = android.graphics.Typeface.DEFAULT_BOLD
         }
-        val programme = TextView(this).apply {
-            text = "Трансляция по умолчанию"
+        programmeView = TextView(this).apply {
+            text = "Загрузка плейлиста"
             textSize = 14f
             setTextColor(0xFFCAD2DC.toInt())
             setPadding(0, dp(7), 0, 0)
         }
-        textColumn.addView(channel)
-        textColumn.addView(programme)
+        textColumn.addView(channelNameView)
+        textColumn.addView(programmeView)
         bar.addView(textColumn, LinearLayout.LayoutParams(0, -2, 1f))
         val live = TextView(this).apply {
             text = "● LIVE"
@@ -136,10 +147,70 @@ class MainActivity : AppCompatActivity() {
         return bar
     }
 
-    private fun playChannel(url: String) {
-        hint.text = "ARNIX TV\nПодключение к трансляции…"
+    private fun loadPlaylistAndPlayFirst() {
+        hint.text = "ARNIX TV\nЗагрузка списка каналов…"
+        Thread {
+            var connection: HttpURLConnection? = null
+            try {
+                connection = (URL(playlistUrl).openConnection() as HttpURLConnection).apply {
+                    connectTimeout = 15000
+                    readTimeout = 20000
+                    requestMethod = "GET"
+                    setRequestProperty("User-Agent", "ARNIX-TV/0.2")
+                }
+                val body = connection.inputStream.bufferedReader(Charsets.UTF_8).use { it.readText() }
+                val channels = parseM3u(body, playlistUrl)
+                runOnUiThread {
+                    if (isFinishing || isDestroyed) return@runOnUiThread
+                    val first = channels.firstOrNull()
+                    if (first == null) {
+                        hint.text = "В плейлисте нет поддерживаемых каналов\nНужны HTTP/HTTPS-потоки"
+                        hint.visibility = View.VISIBLE
+                        programmeView.text = "Нет доступных каналов"
+                    } else {
+                        channelNameView.text = first.name
+                        programmeView.text = "Канал 1 • Первый в списке"
+                        playChannel(first)
+                    }
+                }
+            } catch (error: Exception) {
+                runOnUiThread {
+                    if (isFinishing || isDestroyed) return@runOnUiThread
+                    hint.text = "Не удалось загрузить плейлист\n${error.javaClass.simpleName}: ${error.message ?: "проверьте интернет"}"
+                    hint.visibility = View.VISIBLE
+                    programmeView.text = "Ошибка загрузки списка"
+                }
+            } finally {
+                connection?.disconnect()
+            }
+        }.start()
+    }
+
+    private fun parseM3u(content: String, baseUrl: String): List<Channel> {
+        val result = mutableListOf<Channel>()
+        var pendingName: String? = null
+        content.lineSequence().forEach { rawLine ->
+            val line = rawLine.trim()
+            when {
+                line.startsWith("#EXTINF", ignoreCase = true) -> {
+                    pendingName = line.substringAfterLast(',').trim().ifBlank { "Телеканал" }
+                }
+                line.isNotBlank() && !line.startsWith("#") && pendingName != null -> {
+                    val resolved = try { URL(URL(baseUrl), line).toString() } catch (_: Exception) { line }
+                    if (resolved.startsWith("http://", true) || resolved.startsWith("https://", true)) {
+                        result.add(Channel(pendingName!!, resolved))
+                    }
+                    pendingName = null
+                }
+            }
+        }
+        return result
+    }
+
+    private fun playChannel(channel: Channel) {
+        hint.text = "ARNIX TV\nПодключение к каналу: ${channel.name}"
         hint.visibility = View.VISIBLE
-        player?.setMediaItem(MediaItem.fromUri(url))
+        player?.setMediaItem(MediaItem.fromUri(channel.url))
         player?.prepare()
         player?.playWhenReady = true
         showInfoBar(true)
