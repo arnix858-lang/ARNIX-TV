@@ -19,6 +19,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.view.WindowManager
 import android.widget.FrameLayout
+import android.widget.HorizontalScrollView
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.ProgressBar
@@ -34,6 +35,7 @@ import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.media3.ui.PlayerView
+import com.google.android.material.shape.MaterialShapeDrawable
 import org.xmlpull.v1.XmlPullParser
 import java.io.BufferedInputStream
 import java.util.zip.GZIPInputStream
@@ -200,21 +202,20 @@ class MainActivity : AppCompatActivity() {
             gravity = Gravity.CENTER_VERTICAL
         }
         val logoFrame = FrameLayout(this).apply {
-            background = GradientDrawable().apply {
-                setColor(0xFF263342.toInt())
-                cornerRadius = dp(12).toFloat()
+            background = MaterialShapeDrawable().apply {
+                fillColor = android.content.res.ColorStateList.valueOf(0xFF263342.toInt())
+                setCornerSize(dp(12).toFloat())
             }
         }
         logoView = ImageView(this).apply { scaleType = ImageView.ScaleType.FIT_CENTER }
         logoFrame.addView(logoView, FrameLayout.LayoutParams(-1, -1))
         logoFallback = TextView(this).apply {
-            text = "TV"
-            textSize = 20f
+            text = ""
             gravity = Gravity.CENTER
-            setTextColor(Color.WHITE)
-            typeface = Typeface.DEFAULT_BOLD
+            background = null
         }
         logoFrame.addView(logoFallback, FrameLayout.LayoutParams(-1, -1))
+        logoView.setImageResource(android.R.drawable.ic_menu_view)
         top.addView(logoFrame, LinearLayout.LayoutParams(dp(62), dp(62)))
 
         val titles = LinearLayout(this).apply {
@@ -439,8 +440,12 @@ class MainActivity : AppCompatActivity() {
 
             val logo = ImageView(this).apply {
                 scaleType = ImageView.ScaleType.FIT_CENTER
-                setBackgroundColor(0x22FFFFFF.toInt())
-                if (channel.logo.isBlank()) setImageResource(android.R.drawable.ic_menu_info_details)
+                background = MaterialShapeDrawable().apply {
+                    fillColor = android.content.res.ColorStateList.valueOf(0x222F455A)
+                    setCornerSize(dp(7).toFloat())
+                }
+                setPadding(dp(5), dp(4), dp(5), dp(4))
+                setImageResource(android.R.drawable.ic_menu_view)
             }
             item.addView(logo, LinearLayout.LayoutParams(dp(38), dp(30)).apply {
                 rightMargin = dp(9)
@@ -648,8 +653,8 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun loadLogo(channel: Channel) {
-        logoView.setImageDrawable(null)
-        logoFallback.visibility = View.VISIBLE
+        logoView.setImageResource(android.R.drawable.ic_menu_view)
+        logoFallback.visibility = View.GONE
         if (channel.logo.isBlank()) return
         Thread {
             var connection: HttpURLConnection? = null
