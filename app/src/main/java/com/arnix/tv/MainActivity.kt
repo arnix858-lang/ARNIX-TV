@@ -15,13 +15,14 @@ import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.media3.common.MediaItem
+import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.media3.ui.PlayerView
 
 class MainActivity : AppCompatActivity() {
-    private lateinit var player: ExoPlayer
+    private var player: ExoPlayer? = null
     private lateinit var playerView: PlayerView
     private lateinit var infoBar: LinearLayout
     private lateinit var hint: TextView
@@ -34,6 +35,7 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         enterImmersiveMode()
+
         val root = FrameLayout(this).apply { setBackgroundColor(0xFF000000.toInt()) }
         playerView = PlayerView(this).apply {
             useController = false
@@ -42,14 +44,16 @@ class MainActivity : AppCompatActivity() {
             setBackgroundColor(android.graphics.Color.BLACK)
         }
         root.addView(playerView, FrameLayout.LayoutParams(-1, -1))
+
         hint = TextView(this).apply {
-            text = "ARNIX TV\nДобавьте плейлист, чтобы начать просмотр"
+            text = "ARNIX TV\nПодключение к трансляции…"
             setTextColor(0xFFB8C2CC.toInt())
             textSize = 17f
             gravity = Gravity.CENTER
             setLineSpacing(6f, 1f)
         }
         root.addView(hint, FrameLayout.LayoutParams(-1, -1))
+
         infoBar = buildInfoBar()
         val infoParams = FrameLayout.LayoutParams(-1, dp(112), Gravity.BOTTOM)
         infoParams.setMargins(dp(20), 0, dp(20), dp(22))
@@ -58,15 +62,31 @@ class MainActivity : AppCompatActivity() {
         root.setOnClickListener { toggleInfoBar() }
         playerView.setOnClickListener { toggleInfoBar() }
         setContentView(root)
-        player = ExoPlayer.Builder(this).build()
-        playerView.player = player
-        player.addListener(object : Player.Listener {
-            override fun onPlaybackStateChanged(playbackState: Int) {
-                hint.visibility = if (playbackState == Player.STATE_IDLE) View.VISIBLE else View.GONE
-            }
-        })
-        // Автоматически запускаем заданный пользователем поток при старте приложения.
-        playChannel(defaultStreamUrl)
+
+        try {
+            val exoPlayer = ExoPlayer.Builder(this).build()
+            player = exoPlayer
+            playerView.player = exoPlayer
+            exoPlayer.addListener(object : Player.Listener {
+                override fun onPlaybackStateChanged(playbackState: Int) {
+                    if (playbackState == Player.STATE_BUFFERING) {
+                        hint.text = "ARNIX TV\nПодключение к трансляции…"
+                        hint.visibility = View.VISIBLE
+                    } else if (playbackState == Player.STATE_READY) {
+                        hint.visibility = View.GONE
+                    }
+                }
+
+                override fun onPlayerError(error: PlaybackException) {
+                    hint.text = "Не удалось запустить трансляцию\nПроверьте интернет или адрес потока\nКод: ${error.errorCodeName}"
+                    hint.visibility = View.VISIBLE
+                }
+            })
+            playChannel(defaultStreamUrl)
+        } catch (error: Exception) {
+            hint.text = "Ошибка запуска плеера\n${error.javaClass.simpleName}: ${error.message ?: "без подробностей"}"
+            hint.visibility = View.VISIBLE
+        }
     }
 
     private fun buildInfoBar(): LinearLayout {
@@ -116,12 +136,12 @@ class MainActivity : AppCompatActivity() {
         return bar
     }
 
-    // Called after selecting a channel from the IPTV playlist.
     private fun playChannel(url: String) {
-        hint.visibility = View.GONE
-        player.setMediaItem(MediaItem.fromUri(url))
-        player.prepare()
-        player.playWhenReady = true
+        hint.text = "ARNIX TV\nПодключение к трансляции…"
+        hint.visibility = View.VISIBLE
+        player?.setMediaItem(MediaItem.fromUri(url))
+        player?.prepare()
+        player?.playWhenReady = true
         showInfoBar(true)
     }
 
@@ -158,10 +178,17 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()
-    override fun onStop() { super.onStop(); player.pause() }
+
+    override fun onStop() {
+        player?.pause()
+        super.onStop()
+    }
+
     override fun onDestroy() {
         handler.removeCallbacksAndMessages(null)
-        player.release()
+        playerView.player = null
+        player?.release()
+        player = null
         super.onDestroy()
     }
 }
