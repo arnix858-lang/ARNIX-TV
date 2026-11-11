@@ -3,6 +3,10 @@ package com.arnix.tv
 import android.graphics.BitmapFactory
 import android.graphics.Color
 import android.graphics.Typeface
+import android.text.SpannableStringBuilder
+import android.text.Spanned
+import android.text.style.ForegroundColorSpan
+import android.text.style.StyleSpan
 import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
 import android.os.Handler
@@ -81,8 +85,9 @@ class MainActivity : AppCompatActivity() {
     private val hideOverlay = Runnable { showInfoBar(false) }
     private val progressTicker = object : Runnable {
         override fun run() {
+            refreshCurrentEpg()
             updateProgress()
-            handler.postDelayed(this, 30000)
+            handler.postDelayed(this, 15000)
         }
     }
 
@@ -170,9 +175,9 @@ class MainActivity : AppCompatActivity() {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(18), dp(14), dp(18), dp(14))
             background = GradientDrawable().apply {
-                setColor(Color.TRANSPARENT)
+                setColor(0xB8172533.toInt())
                 cornerRadius = dp(20).toFloat()
-                setStroke(dp(1), 0xCCFFFFFF.toInt())
+                setStroke(dp(1), 0xB8FFFFFF.toInt())
             }
             elevation = dp(8).toFloat()
         }
@@ -260,9 +265,11 @@ class MainActivity : AppCompatActivity() {
         return TextView(this).apply {
             text = "$label   $initial"
             textSize = 13f
-            maxLines = 1
+            maxLines = 2
             ellipsize = android.text.TextUtils.TruncateAt.END
+            setLineSpacing(dp(3).toFloat(), 1.0f)
             setTextColor(0xFFE5EBF2.toInt())
+            setPadding(0, dp(2), 0, dp(2))
         }
     }
 
@@ -546,13 +553,54 @@ class MainActivity : AppCompatActivity() {
 
     private fun displayEpg(channel: Channel, programmes: List<Programme>) {
         if (isFinishing || isDestroyed || currentChannelIndex !in channels.indices ||
-            channels[currentChannelIndex].id != channel.id) return
+            channels[currentChannelIndex].url != channel.url) return
         val now = System.currentTimeMillis()
         currentProgramme = programmes.firstOrNull { now >= it.start && now < it.stop }
-        val next = programmes.filter { it.start >= now }.minByOrNull { it.start }
-        nowView.text = "СЕЙЧАС   ${currentProgramme?.title ?: "Нет данных программы"}"
-        nextView.text = "ДАЛЕЕ   ${next?.title ?: "Нет данных программы"}"
+        val next = programmes.firstOrNull { it.start > now }
+        val current = currentProgramme
+        nowView.text = if (current != null) {
+            styledEpgLine("СЕЙЧАС", current.title,
+                "${formatClock(current.start)}–${formatClock(current.stop)}  •  ${formatDuration(current.stop - current.start)}")
+        } else {
+            styledEpgLine("СЕЙЧАС", "Нет текущей программы", "Телепрограмма обновляется")
+        }
+        nextView.text = if (next != null) {
+            val until = ((next.start - now).coerceAtLeast(0L) / 60_000L)
+            styledEpgLine("ДАЛЕЕ", next.title,
+                "${formatClock(next.start)}–${formatClock(next.stop)}  •  ${formatDuration(next.stop - next.start)}  •  через ${until} мин")
+        } else {
+            styledEpgLine("ДАЛЕЕ", "Нет следующей программы", "Расписание пока недоступно")
+        }
         updateProgress()
+    }
+
+    private fun styledEpgLine(label: String, title: String, details: String): CharSequence {
+        val result = SpannableStringBuilder()
+        result.append(label).append("  ")
+        result.setSpan(ForegroundColorSpan(0xFF65C0FF.toInt()), 0, label.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+        result.setSpan(StyleSpan(Typeface.BOLD), 0, label.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+        result.append(title).append("\n")
+        val detailStart = result.length
+        result.append(details)
+        result.setSpan(ForegroundColorSpan(0xFFB9C9D9.toInt()), detailStart, result.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+        return result
+    }
+
+    private fun formatClock(timestamp: Long): String =
+        SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date(timestamp))
+
+    private fun formatDuration(milliseconds: Long): String {
+        val minutes = (milliseconds / 60_000L).coerceAtLeast(1L)
+        val hours = minutes / 60L
+        val rest = minutes % 60L
+        return if (hours > 0) "${hours} ч ${rest} мин" else "${minutes} мин"
+    }
+
+    private fun refreshCurrentEpg() {
+        if (currentChannelIndex !in channels.indices) return
+        val channel = channels[currentChannelIndex]
+        val key = channel.id.ifBlank { normalizeChannelName(channel.name) }
+        epgCache[key]?.let { displayEpg(channel, it) }
     }
 
     private fun parseEpg(input: java.io.InputStream, target: Channel): List<Programme> {
