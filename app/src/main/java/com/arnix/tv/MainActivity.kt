@@ -67,7 +67,7 @@ class MainActivity : AppCompatActivity() {
     private var currentProgramme: Programme? = null
     private val epgCache = ConcurrentHashMap<String, List<Programme>>()
 
-    private val playlistUrl = "https://raw.githubusercontent.com/arnix858-lang/ARNIX-IPTV/main/playlist.m3u"
+    private val playlistUrl = "http://cdntv.online/high/9n3hebsjat/mpeg.m3u"
     private var epgUrl: String? = null
     private val hideOverlay = Runnable { showInfoBar(false) }
     private val progressTicker = object : Runnable {
