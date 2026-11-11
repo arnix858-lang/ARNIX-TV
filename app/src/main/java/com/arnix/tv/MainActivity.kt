@@ -332,15 +332,21 @@ class MainActivity : AppCompatActivity() {
         currentProgramme = null
         progress.progress = 0
         loadLogo(channel)
-        hint.text = "ARNIX TV\nПодключение: ${channel.name}"
-        hint.visibility = View.VISIBLE
-        player?.setMediaItem(MediaItem.fromUri(channel.url))
-        player?.prepare()
-        player?.playWhenReady = true
         showInfoBar(true)
         loadEpgFor(channel)
+        if (channel.url.startsWith("udp://", true)) {
+            player?.stop()
+            hint.text = "Канал есть в плейлисте, но использует UDP multicast.\\nДля просмотра нужна сеть провайдера с поддержкой multicast."
+            hint.visibility = View.VISIBLE
+        } else {
+            hint.text = "ARNIX TV\\nПодключение: ${channel.name}"
+            hint.visibility = View.VISIBLE
+            player?.setMediaItem(MediaItem.fromUri(channel.url))
+            player?.prepare()
+            player?.playWhenReady = true
+        }
+        preloadAdjacentChannels()
     }
-
 
     // Подогреваем HTTP/HLS соседних каналов заранее: запрашиваем короткий участок
     // плейлиста и первый сегмент, не создавая второй видеодекодер.
