@@ -18,6 +18,7 @@ import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import android.view.WindowManager
+import android.widget.EditText
 import android.widget.FrameLayout
 import android.widget.HorizontalScrollView
 import android.widget.ImageView
@@ -25,6 +26,8 @@ import android.widget.LinearLayout
 import android.widget.ProgressBar
 import android.widget.ScrollView
 import android.widget.TextView
+import android.text.Editable
+import android.text.TextWatcher
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
@@ -72,6 +75,9 @@ class MainActivity : AppCompatActivity() {
     private lateinit var channelDrawer: FrameLayout
     private lateinit var channelListContainer: LinearLayout
     private lateinit var categoryContainer: LinearLayout
+    private lateinit var channelCountView: TextView
+    private lateinit var channelSearch: EditText
+    private var channelSearchQuery = ""
     private lateinit var clockView: TextView
     private var selectedCategory = "Все"
     private val drawerLogoCache = ConcurrentHashMap<String, android.graphics.Bitmap>()
@@ -291,6 +297,19 @@ class MainActivity : AppCompatActivity() {
             text = "Категории и прямые эфиры"; textSize = 12f
             setTextColor(0xFF8FA6BC.toInt()); setPadding(0, 0, 0, dp(14))
         })
+        channelCountView = TextView(this).apply { text = "Каналы"; textSize = 11f; setTextColor(0xFF91A9C1.toInt()); setPadding(0, dp(12), 0, dp(7)) }
+        drawer.addView(channelCountView)
+        channelSearch = EditText(this).apply {
+            hint = "Поиск канала…"; textSize = 14f; singleLine = true
+            setTextColor(Color.WHITE); setHintTextColor(0xFF8196AA.toInt()); setPadding(dp(14), 0, dp(14), 0)
+            background = GradientDrawable().apply { setColor(0xFF17283A.toInt()); cornerRadius = dp(13).toFloat(); setStroke(dp(1), 0x554D8DBB) }
+            addTextChangedListener(object : TextWatcher {
+                override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+                override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) { channelSearchQuery = s?.toString()?.trim().orEmpty(); populateChannelDrawer() }
+                override fun afterTextChanged(s: Editable?) {}
+            })
+        }
+        drawer.addView(channelSearch, LinearLayout.LayoutParams(-1, dp(44)).apply { bottomMargin = dp(10) })
         val categoryScroll = HorizontalScrollView(this).apply { isHorizontalScrollBarEnabled = false; clipToPadding = false }
         categoryContainer = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
         categoryScroll.addView(categoryContainer, ViewGroup.LayoutParams(-2, -2))
@@ -397,8 +416,11 @@ class MainActivity : AppCompatActivity() {
 
         channelListContainer.removeAllViews()
         val visibleChannels = channels.withIndex().filter {
-            selectedCategory == "Все" || normalizeGroupName(it.value.group) == selectedCategory
+            val groupMatches = selectedCategory == "Все" || normalizeGroupName(it.value.group) == selectedCategory
+            val searchMatches = channelSearchQuery.isBlank() || it.value.name.contains(channelSearchQuery, true) || normalizeGroupName(it.value.group).contains(channelSearchQuery, true)
+            groupMatches && searchMatches
         }
+        channelCountView.text = if (channelSearchQuery.isBlank()) visibleChannels.size.toString() + " каналов • " + channels.size + " всего" else "Найдено: " + visibleChannels.size
         visibleChannels.forEach { indexed ->
             val index = indexed.index
             val channel = indexed.value
@@ -448,10 +470,15 @@ class MainActivity : AppCompatActivity() {
                 ellipsize = android.text.TextUtils.TruncateAt.END
                 setTextColor(if (selected) Color.WHITE else 0xFFE0E8F0.toInt())
             }
-            item.addView(title, LinearLayout.LayoutParams(0, -2, 1f))
-            channelListContainer.addView(item, LinearLayout.LayoutParams(-1, -2).apply {
-                bottomMargin = dp(3)
+            val details = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER_VERTICAL }
+            details.addView(title)
+            details.addView(TextView(this).apply {
+                text = normalizeGroupName(channel.group) + if (selected) "  •  СЕЙЧАС В ЭФИРЕ" else ""
+                textSize = 10f; setTextColor(if (selected) 0xFF65C0FF.toInt() else 0xFF8299AF.toInt())
+                maxLines = 1; ellipsize = android.text.TextUtils.TruncateAt.END; setPadding(0, dp(3), 0, 0)
             })
+            item.addView(details, LinearLayout.LayoutParams(0, -2, 1f))
+            channelListContainer.addView(item, LinearLayout.LayoutParams(-1, dp(58)).apply { bottomMargin = dp(5) })
         }
         if (visibleChannels.isEmpty()) {
             channelListContainer.addView(TextView(this).apply {
