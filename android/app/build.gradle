@@ -109,7 +109,7 @@ android {
     }
     applicationVariants.all { variant ->
         variant.outputs.all { output ->
-            def apkName = "HTV-${variant.versionName}"
+            def apkName = "ARNIX-TV-${variant.versionName}"
             outputFileName = new File(apkName + ".apk")
         }
     }
