@@ -332,8 +332,30 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun drawerCategories(): List<String> =
-        listOf("Все") + channels.map { it.group.trim() }.filter { it.isNotBlank() }.distinct().sorted()
+    private fun normalizeGroupName(raw: String): String {
+        val value = raw.trim().replace(Regex("[_\\s]+"), " ")
+        if (value.isBlank()) return "Без категории"
+        val key = value.lowercase(Locale.ROOT)
+        return when {
+            key.contains("news") || key.contains("новост") -> "Новости"
+            key.contains("sport") || key.contains("спорт") -> "Спорт"
+            key.contains("movie") || key.contains("кино") || key.contains("фильм") -> "Кино"
+            key.contains("serial") || key.contains("сериал") -> "Сериалы"
+            key.contains("child") || key.contains("kids") || key.contains("дет") -> "Детские"
+            key.contains("music") || key.contains("музык") -> "Музыка"
+            key.contains("educat") || key.contains("позн") || key.contains("науч") -> "Познавательные"
+            key.contains("entertain") || key.contains("развлек") -> "Развлекательные"
+            key.contains("radio") || key.contains("радио") -> "Радио"
+            key.contains("federal") || key.contains("федерал") -> "Федеральные"
+            else -> value.split(" ").joinToString(" ") { word -> word.lowercase(Locale.getDefault()).replaceFirstChar { it.uppercase(Locale.getDefault()) } }
+        }
+    }
+
+    private fun drawerCategories(): List<String> {
+        val priority = listOf("Федеральные", "Новости", "Развлекательные", "Кино", "Сериалы", "Детские", "Спорт", "Познавательные", "Музыка", "Радио", "Без категории")
+        val found = channels.map { normalizeGroupName(it.group) }.distinct()
+        return listOf("Все") + found.sortedWith(compareBy<String> { priority.indexOf(it).let { n -> if (n < 0) Int.MAX_VALUE else n } }.thenBy { it.lowercase(Locale.ROOT) })
+    }
 
     private fun changeDrawerCategory(direction: Int) {
         val categories = drawerCategories()
@@ -375,7 +397,7 @@ class MainActivity : AppCompatActivity() {
 
         channelListContainer.removeAllViews()
         val visibleChannels = channels.withIndex().filter {
-            selectedCategory == "Все" || it.value.group.trim() == selectedCategory
+            selectedCategory == "Все" || normalizeGroupName(it.value.group) == selectedCategory
         }
         visibleChannels.forEach { indexed ->
             val index = indexed.index
@@ -545,8 +567,7 @@ class MainActivity : AppCompatActivity() {
         currentChannelIndex = ((index % channels.size) + channels.size) % channels.size
         val channel = channels[currentChannelIndex]
         channelNameView.text = channel.name
-        channelMetaView.text = "Канал ${currentChannelIndex + 1} из ${channels.size}" +
-            if (channel.group.isNotBlank()) " • ${channel.group}" else ""
+        channelMetaView.text = "Канал ${currentChannelIndex + 1} из ${channels.size}" + " • " + normalizeGroupName(channel.group)
         nowView.text = "СЕЙЧАС   Загрузка программы…"
         nextView.text = "ДАЛЕЕ   Загрузка программы…"
         currentProgramme = null
