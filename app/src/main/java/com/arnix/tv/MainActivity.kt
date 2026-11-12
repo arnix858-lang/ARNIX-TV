@@ -188,89 +188,56 @@ class MainActivity : AppCompatActivity() {
     private fun buildInfoBar(): LinearLayout {
         val panel = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(dp(18), dp(14), dp(18), dp(14))
-            background = GradientDrawable().apply {
-                setColor(0xB8172533.toInt())
-                cornerRadius = dp(20).toFloat()
-                setStroke(dp(1), 0xB8FFFFFF.toInt())
+            setPadding(dp(18), dp(15), dp(18), dp(14))
+            background = GradientDrawable(GradientDrawable.Orientation.TL_BR,
+                intArrayOf(0xF20B1422.toInt(), 0xE91A2C42.toInt(), 0xE90B192B.toInt())).apply {
+                cornerRadius = dp(22).toFloat()
+                setStroke(dp(1), 0x6659BFFF)
             }
-            elevation = dp(8).toFloat()
+            elevation = dp(14).toFloat()
         }
-
-        val top = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
-        }
+        val top = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
         val logoFrame = FrameLayout(this).apply {
             background = MaterialShapeDrawable().apply {
-                fillColor = android.content.res.ColorStateList.valueOf(0xFF263342.toInt())
-                setCornerSize(dp(12).toFloat())
+                fillColor = android.content.res.ColorStateList.valueOf(0xFF172D43.toInt())
+                setCornerSize(dp(15).toFloat())
             }
         }
-        logoView = ImageView(this).apply { scaleType = ImageView.ScaleType.FIT_CENTER }
+        logoView = ImageView(this).apply { scaleType = ImageView.ScaleType.FIT_CENTER; setPadding(dp(5), dp(5), dp(5), dp(5)) }
         logoFrame.addView(logoView, FrameLayout.LayoutParams(-1, -1))
-        logoFallback = TextView(this).apply {
-            text = ""
-            gravity = Gravity.CENTER
-            background = null
-        }
+        logoFallback = TextView(this).apply { gravity = Gravity.CENTER; background = null }
         logoFrame.addView(logoFallback, FrameLayout.LayoutParams(-1, -1))
         logoView.setImageResource(android.R.drawable.ic_menu_view)
-        top.addView(logoFrame, LinearLayout.LayoutParams(dp(62), dp(62)))
-
-        val titles = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            gravity = Gravity.CENTER_VERTICAL
-            setPadding(dp(14), 0, dp(8), 0)
-        }
+        top.addView(logoFrame, LinearLayout.LayoutParams(dp(58), dp(58)))
+        val titles = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER_VERTICAL; setPadding(dp(14), 0, dp(10), 0) }
         channelNameView = TextView(this).apply {
-            text = "ARNIX TV"
-            textSize = 19f
-            maxLines = 1
+            text = "ARNIX TV"; textSize = 20f; maxLines = 1
             ellipsize = android.text.TextUtils.TruncateAt.END
-            setTextColor(Color.WHITE)
-            typeface = Typeface.DEFAULT_BOLD
+            setTextColor(Color.WHITE); typeface = Typeface.create("sans-serif", Typeface.BOLD)
         }
         channelMetaView = TextView(this).apply {
-            text = "Канал 0 • Прямой эфир"
-            textSize = 12f
-            setTextColor(0xFFB8C5D4.toInt())
-            setPadding(0, dp(4), 0, 0)
+            text = "ПРЯМОЙ ЭФИР  •  ТВ-КАНАЛЫ"; textSize = 10f; letterSpacing = 0.08f
+            setTextColor(0xFF91A9C1.toInt()); setPadding(0, dp(4), 0, 0)
         }
-        titles.addView(channelNameView)
-        titles.addView(channelMetaView)
+        titles.addView(channelNameView); titles.addView(channelMetaView)
         top.addView(titles, LinearLayout.LayoutParams(0, -2, 1f))
-
-        val accent = View(this).apply {
-            background = GradientDrawable().apply {
-                setColor(0xFF55B7FF.toInt())
-                cornerRadius = dp(3).toFloat()
-            }
-        }
-        top.addView(accent, LinearLayout.LayoutParams(dp(4), dp(34)))
+        top.addView(TextView(this).apply {
+            text = "●  LIVE"; textSize = 11f; typeface = Typeface.DEFAULT_BOLD
+            setTextColor(0xFFFF6B73.toInt()); setPadding(dp(10), dp(7), dp(10), dp(7))
+            background = GradientDrawable().apply { setColor(0x332D6476); cornerRadius = dp(20).toFloat(); setStroke(dp(1), 0x6655B7FF) }
+        })
         panel.addView(top)
-
-        val separator = View(this).apply { setBackgroundColor(0x44FFFFFF) }
-        val sepParams = LinearLayout.LayoutParams(-1, dp(1))
-        sepParams.topMargin = dp(12)
-        sepParams.bottomMargin = dp(9)
-        panel.addView(separator, sepParams)
-
-        nowView = epgLine("СЕЙЧАС", "Загрузка программы…")
+        panel.addView(View(this).apply { setBackgroundColor(0x334D789D) },
+            LinearLayout.LayoutParams(-1, dp(1)).apply { topMargin = dp(13); bottomMargin = dp(9) })
+        nowView = epgLine("СЕЙЧАС", "Загрузка программы…").apply { textSize = 13f }
         panel.addView(nowView)
-
         progress = ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal).apply {
-            max = 1000
-            progress = 0
-            progressTintList = android.content.res.ColorStateList.valueOf(0xFF45A5FF.toInt())
-            progressBackgroundTintList = android.content.res.ColorStateList.valueOf(0x55FFFFFF)
+            max = 1000; progress = 0
+            progressTintList = android.content.res.ColorStateList.valueOf(0xFF45B9FF.toInt())
+            progressBackgroundTintList = android.content.res.ColorStateList.valueOf(0x334B6A85)
         }
-        val progressParams = LinearLayout.LayoutParams(-1, dp(4))
-        progressParams.topMargin = dp(5)
-        progressParams.bottomMargin = dp(7)
-        panel.addView(progress, progressParams)
-
-        nextView = epgLine("ДАЛЕЕ", "Нет данных программы")
+        panel.addView(progress, LinearLayout.LayoutParams(-1, dp(4)).apply { topMargin = dp(7); bottomMargin = dp(7) })
+        nextView = epgLine("ДАЛЕЕ", "Нет данных программы").apply { textSize = 12f }
         panel.addView(nextView)
         return panel
     }
