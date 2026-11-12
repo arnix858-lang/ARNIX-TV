@@ -16,7 +16,7 @@ import 'package:collection/collection.dart';
 
 import '../../common/utils/debounce.dart';
 
-final _logger = LoggerUtil.create(['ТВ-трансляция']);
+final _logger = LoggerUtil.create(['直播播放']);
 
 class IptvPage extends StatefulWidget {
   const IptvPage({super.key});
@@ -138,12 +138,12 @@ class _IptvPageState extends State<IptvPage> with WidgetsBindingObserver {
     _refreshTimer = null;
   }
 
-  /// 单源频道的最大Повторить次数
+  /// 单源频道的最大重试次数
   ///
-  /// 原来尝试上限直接等于源数量，单源频道失败一次就弹出「Все потоки канала недоступны」，
+  /// 原来尝试上限直接等于源数量，单源频道失败一次就弹出「所有直播源均不可用」，
   /// 可是用户是拿 ffplay 验证过这个源能播的 —— 网络抖动、首次握手慢这类偶发失败
-  /// 被一棍子打死，App 就此再也不Повторить，界面一直留在转圈。
-  /// 单源也要留几次Повторить机会。
+  /// 被一棍子打死，App 就此再也不重试，界面一直留在转圈。
+  /// 单源也要留几次重试机会。
   static const int _singleSourceMaxAttempts = 3;
 
   Future<void> _switchToNextAvailableSource() async {
@@ -162,19 +162,19 @@ class _IptvPageState extends State<IptvPage> with WidgetsBindingObserver {
       return;
     }
 
-    // 多源时轮两圈（每个源都有不止一次机会），单源时退化为固定Повторить次数
+    // 多源时轮两圈（每个源都有不止一次机会），单源时退化为固定重试次数
     final maxAttempts =
         sources.length > 1 ? sources.length * 2 : _singleSourceMaxAttempts;
 
-    // 所有源都试过了，停止Повторить
+    // 所有源都试过了，停止重试
     if (_switchAttempts >= maxAttempts) {
-      _logger.warning("已轮试 $maxAttempts 次仍无法播放，停止Повторить");
+      _logger.warning("После $maxAttempts попыток воспроизведение не удалось. Повтор остановлен");
       ScaffoldMessenger.of(context)
         ..clearSnackBars()
         ..showSnackBar(SnackBar(
           content: Text(sources.length > 1
-              ? "Все потоки канала недоступны"
-              : "Поток временно недоступен. Попробуйте позже"),
+              ? "所有直播源均不可用"
+              : "该直播源暂不可用，请稍后重试"),
           duration: const Duration(milliseconds: 1500),
         ));
       playerStore.isSwitching = false;
@@ -218,7 +218,7 @@ class _IptvPageState extends State<IptvPage> with WidgetsBindingObserver {
         ScaffoldMessenger.of(context)
           ..clearSnackBars()
           ..showSnackBar(const SnackBar(
-            content: Text("Воспроизведение тормозит, переключаем поток…"),
+            content: Text("播放卡顿，尝试切换源..."),
             duration: Duration(milliseconds: 1500),
           ));
         _switchToNextAvailableSource();
@@ -228,7 +228,7 @@ class _IptvPageState extends State<IptvPage> with WidgetsBindingObserver {
         ScaffoldMessenger.of(context)
           ..clearSnackBars()
           ..showSnackBar(const SnackBar(
-            content: Text("Ошибка воспроизведения, переключаем поток…"),
+            content: Text("播放错误，尝试切换源..."),
             duration: Duration(milliseconds: 1500),
           ));
         _switchToNextAvailableSource();
@@ -241,7 +241,7 @@ class _IptvPageState extends State<IptvPage> with WidgetsBindingObserver {
       ScaffoldMessenger.of(context)
         ..clearSnackBars()
         ..showSnackBar(const SnackBar(
-          content: Text("Повтор завершён. Возврат к эфиру"),
+          content: Text("回看结束，回到直播"),
           duration: Duration(milliseconds: 1500),
         ));
       playerStore.playIptv(iptvStore.currentIptv);
@@ -277,7 +277,7 @@ class _IptvPageState extends State<IptvPage> with WidgetsBindingObserver {
       iptvStore.refreshEpgList();
 
       // 补起播：以前只有 _initData 末尾会挑一次首频道，
-      // 首次拉源失败后即使按 OK Повторить成功，也不会自动播放，界面停在失败提示上。
+      // 首次拉源失败后即使按 OK 重试成功，也不会自动播放，界面停在失败提示上。
       if (list.isNotEmpty && iptvStore.currentIptv.url.isEmpty) {
         iptvStore.currentIptv =
             list.elementAtOrNull(IptvSettings.initialIptvIdx) ?? list.first;
@@ -292,14 +292,14 @@ class _IptvPageState extends State<IptvPage> with WidgetsBindingObserver {
       playerStore.warmUp(),
     ]);
 
-    _logger.debug('准备设置首频道: ipetvList长度=${iptvStore.iptvList.length}, initialIptvIdx=${IptvSettings.initialIptvIdx}');
+    _logger.debug('Подготовка первого канала');
     if (iptvStore.iptvList.isNotEmpty) {
       final first = iptvStore.iptvList.elementAtOrNull(IptvSettings.initialIptvIdx) ??
           iptvStore.iptvList.first;
-      _logger.debug('设置当前频道: ${first.name}');
+      _logger.debug('Выбран первый канал: ${first.name}');
       iptvStore.currentIptv = first;
     }
-    _logger.debug('首频道设置完成');
+    _logger.debug('Первый канал выбран');
 
     updateStore.loadCurrentVersion();
     updateStore.refreshLatestRelease();
@@ -465,7 +465,7 @@ class _IptvPageState extends State<IptvPage> with WidgetsBindingObserver {
         },
       },
       // OK 键改为松手触发：若按下瞬间就弹出面板，遥控器后续的 repeat 事件
-      // 会被面板里的列表接走，表现为"面板刚打开就自动选台又关掉"。
+      // 会被面板里的列表接走，表现为"Панель закрылась после автоматического выбора канала"。
       // 这里与 TwoDimensionListView 的长按判定保持一致。
       onKeyUp: {
         LogicalKeyboardKey.enter: () { _openPanel(); return true; },
@@ -512,7 +512,7 @@ class _IptvPageState extends State<IptvPage> with WidgetsBindingObserver {
   /// 源列表尚未就绪时的占位层
   ///
   /// 以前拉不到源就是一块黑屏：既没有反馈也没有出路，用户只能一直等在那儿。
-  /// 这里把"正在拉"和"拉失败"分开呈现，失败时给出Повторить入口。
+  /// 这里把"正在拉"和"拉失败"分开呈现，失败时给出重试入口。
   Widget _buildListPlaceholder() {
     return Observer(
       builder: (_) {
@@ -535,13 +535,13 @@ class _IptvPageState extends State<IptvPage> with WidgetsBindingObserver {
                           color: AppTheme.fgFaded(context, AppTheme.oSecondary)),
                   SizedBox(height: 20.h),
                   Text(
-                    failed ? 'Не удалось загрузить список каналов' : 'Загружаем список каналов…',
+                    failed ? '直播源获取失败' : '正在获取直播源…',
                     style: AppTheme.text(AppTheme.fg(context), 28.sp),
                   ),
                   if (failed) ...[
                     SizedBox(height: 10.h),
                     Text(
-                      'Проверьте подключение и нажмите OK для повтора',
+                      '请检查网络后，按 OK 键重试',
                       style: AppTheme.text(
                           AppTheme.fgFaded(context, AppTheme.oTertiary), 22.sp),
                     ),
@@ -585,7 +585,7 @@ class _IptvPageState extends State<IptvPage> with WidgetsBindingObserver {
   Timer? _infoHideTimer;
 
   void _openPanel() {
-    // 列表还没就绪时面板是空的，此时 OK 键的语义换成"Повторить"
+    // 列表还没就绪时面板是空的，此时 OK 键的语义换成"重试"
     if (iptvStore.listStatus.value != IptvListStatus.ready) {
       iptvStore.refreshIptvList();
       return;

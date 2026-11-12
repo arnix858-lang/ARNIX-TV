@@ -38,7 +38,7 @@ class PanelIptvInfo extends StatelessWidget {
               builder: (_) {
                 if (playerStore.state != PlayerState.failed) return const SizedBox.shrink();
                 return Text(
-                  '${playerStore.errorInfo}播放失败！',
+                  '${playerStore.errorInfo}Ошибка воспроизведения!',
                   style: AppTheme.text(AppTheme.error(context), 20.sp, weight: FontWeight.bold),
                 );
               },
@@ -48,13 +48,13 @@ class PanelIptvInfo extends StatelessWidget {
         // 节目单
         Observer(
           builder: (_) => Text(
-            '正在播放：${iptvStore.currentIptvProgrammes.current.isNotEmpty ? iptvStore.currentIptvProgrammes.current : '无节目'}',
+            'Сейчас: ${iptvStore.currentIptvProgrammes.current.isNotEmpty ? iptvStore.currentIptvProgrammes.current : 'Нет программы'}',
             style: AppTheme.text(programmeColor, 30.sp),
           ),
         ),
         Observer(
           builder: (_) => Text(
-            '稍后播放：${iptvStore.currentIptvProgrammes.next.isNotEmpty ? iptvStore.currentIptvProgrammes.next : '无节目'}',
+            'Далее: ${iptvStore.currentIptvProgrammes.next.isNotEmpty ? iptvStore.currentIptvProgrammes.next : 'Нет программы'}',
             style: AppTheme.text(programmeColor, 30.sp),
           ),
         ),

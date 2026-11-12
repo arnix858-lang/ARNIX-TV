@@ -15,7 +15,7 @@ class PanelPlayerInfo extends StatelessWidget {
       children: [
         Observer(
           builder: (_) => Text(
-            '分辨率：${playerStore.resolution.width.toInt()}×${playerStore.resolution.height.toInt()}',
+            'Разрешение: ${playerStore.resolution.width.toInt()}×${playerStore.resolution.height.toInt()}',
             style: AppTheme.text(AppTheme.fg(context), 30.sp),
           ),
         )
