@@ -72,6 +72,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var channelDrawer: FrameLayout
     private lateinit var channelListContainer: LinearLayout
     private lateinit var categoryContainer: LinearLayout
+    private lateinit var clockView: TextView
     private var selectedCategory = "Все"
     private val drawerLogoCache = ConcurrentHashMap<String, android.graphics.Bitmap>()
     private val handler = Handler(Looper.getMainLooper())
@@ -92,6 +93,7 @@ class MainActivity : AppCompatActivity() {
     @Volatile private var epgLoading = false
     @Volatile private var epgLoaded = false
     private val hideOverlay = Runnable { showInfoBar(false) }
+    private val clockTicker = object : Runnable { override fun run() { if (::clockView.isInitialized) clockView.text = SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date()); handler.postDelayed(this, 1000) } }
     private val progressTicker = object : Runnable {
         override fun run() {
             refreshCurrentEpg()
@@ -113,6 +115,11 @@ class MainActivity : AppCompatActivity() {
             setBackgroundColor(Color.BLACK)
         }
         root.addView(playerView, FrameLayout.LayoutParams(-1, -1))
+        clockView = TextView(this).apply { text = "--:--"; textSize = 18f; typeface = Typeface.DEFAULT_BOLD; setTextColor(Color.WHITE); gravity = Gravity.CENTER; setPadding(dp(15), dp(9), dp(15), dp(9)); background = GradientDrawable().apply { setColor(0xCC101D2C.toInt()); cornerRadius = dp(18).toFloat(); setStroke(dp(1), 0x6655B7FF) }; elevation = dp(8).toFloat() }
+        val clockParams = FrameLayout.LayoutParams(-2, -2, Gravity.TOP or Gravity.END)
+        clockParams.setMargins(0, dp(18), dp(18), 0)
+        root.addView(clockView, clockParams)
+        handler.post(clockTicker)
 
         hint = TextView(this).apply {
             text = "ARNIX TV\nЗагрузка списка каналов…"
