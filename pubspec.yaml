@@ -42,7 +42,7 @@ dependencies:
   # 界面适配
   flutter_screenutil: ^5.9.0
   # 国际化
-  intl: ^0.18.1
+  intl: ^0.20.3
 
   path_provider: any
 dev_dependencies:
