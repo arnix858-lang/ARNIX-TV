@@ -244,53 +244,51 @@ class MainActivity : AppCompatActivity() {
 
     private fun buildChannelDrawer(): FrameLayout {
         val overlay = FrameLayout(this).apply {
-            setBackgroundColor(0x99000000.toInt())
+            setBackgroundColor(0xB8000712.toInt())
             isClickable = true
             setOnClickListener { showChannelDrawer(false) }
         }
         val drawer = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(dp(16), dp(20), dp(12), dp(12))
-            background = GradientDrawable().apply {
-                setColor(0xF0182533.toInt())
-                cornerRadii = floatArrayOf(0f, 0f, dp(22).toFloat(), dp(22).toFloat(),
-                    dp(22).toFloat(), dp(22).toFloat(), 0f, 0f)
+            setPadding(dp(20), dp(24), dp(16), dp(14))
+            background = GradientDrawable(GradientDrawable.Orientation.TL_BR,
+                intArrayOf(0xFF101D2C.toInt(), 0xFF0A1421.toInt(), 0xFF101C2B.toInt())).apply {
+                cornerRadii = floatArrayOf(0f,0f,dp(26).toFloat(),dp(26).toFloat(),dp(26).toFloat(),dp(26).toFloat(),0f,0f)
                 setStroke(dp(1), 0x6655B7FF)
             }
             isClickable = true
         }
-        val header = TextView(this).apply {
-            text = "ТЕЛЕКАНАЛЫ"
-            textSize = 18f
-            typeface = Typeface.DEFAULT_BOLD
-            setTextColor(Color.WHITE)
-            setPadding(0, 0, 0, dp(5))
-        }
-        val subtitle = TextView(this).apply {
-            text = "Свайп влево или вправо — смена категории"
-            textSize = 11f
-            setTextColor(0xFF9FB2C5.toInt())
-            setPadding(0, 0, 0, dp(10))
-        }
-        drawer.addView(header)
-        drawer.addView(subtitle)
-
-        val categoryScroll = HorizontalScrollView(this).apply {
-            isHorizontalScrollBarEnabled = false
-            clipToPadding = false
-        }
-        categoryContainer = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
-        }
-        categoryScroll.addView(categoryContainer, ViewGroup.LayoutParams(-2, -2))
-        drawer.addView(categoryScroll, LinearLayout.LayoutParams(-1, dp(42)).apply {
-            bottomMargin = dp(8)
+        val brand = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
+        brand.addView(TextView(this).apply {
+            text = "▶"; textSize = 19f; gravity = Gravity.CENTER; setTextColor(Color.WHITE)
+            background = GradientDrawable().apply { setColor(0xFF1689D4.toInt()); cornerRadius = dp(13).toFloat() }
+        }, LinearLayout.LayoutParams(dp(42), dp(42)))
+        val brandText = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(11), 0, 0, 0) }
+        brandText.addView(TextView(this).apply {
+            text = "ARNIX TV"; textSize = 18f; typeface = Typeface.create("sans-serif", Typeface.BOLD); setTextColor(Color.WHITE)
         })
-
-        val scroll = ScrollView(this).apply {
-            isVerticalScrollBarEnabled = false
-        }
+        brandText.addView(TextView(this).apply {
+            text = "ТЕЛЕВИДЕНИЕ В ОДНОМ МЕСТЕ"; textSize = 9f; letterSpacing = 0.1f; setTextColor(0xFF86A0B9.toInt())
+        })
+        brand.addView(brandText, LinearLayout.LayoutParams(0, -2, 1f))
+        brand.addView(TextView(this).apply {
+            text = "✕"; textSize = 18f; gravity = Gravity.CENTER; setTextColor(0xFFB6C7D8.toInt())
+            isFocusable = true; setOnClickListener { showChannelDrawer(false) }
+        }, LinearLayout.LayoutParams(dp(40), dp(40)))
+        drawer.addView(brand)
+        drawer.addView(TextView(this).apply {
+            text = "Выберите канал"; textSize = 24f; typeface = Typeface.create("sans-serif", Typeface.BOLD)
+            setTextColor(Color.WHITE); setPadding(0, dp(25), 0, dp(3))
+        })
+        drawer.addView(TextView(this).apply {
+            text = "Категории и прямые эфиры"; textSize = 12f
+            setTextColor(0xFF8FA6BC.toInt()); setPadding(0, 0, 0, dp(14))
+        })
+        val categoryScroll = HorizontalScrollView(this).apply { isHorizontalScrollBarEnabled = false; clipToPadding = false }
+        categoryContainer = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
+        categoryScroll.addView(categoryContainer, ViewGroup.LayoutParams(-2, -2))
+        drawer.addView(categoryScroll, LinearLayout.LayoutParams(-1, dp(44)).apply { bottomMargin = dp(12) })
+        val scroll = ScrollView(this).apply { isVerticalScrollBarEnabled = false }
         channelListContainer = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
         scroll.addView(channelListContainer, ViewGroup.LayoutParams(-1, -2))
         var swipeStartX = 0f
@@ -299,26 +297,21 @@ class MainActivity : AppCompatActivity() {
                 MotionEvent.ACTION_DOWN -> { swipeStartX = event.x; false }
                 MotionEvent.ACTION_UP -> {
                     val dx = event.x - swipeStartX
-                    if (kotlin.math.abs(dx) > dp(65)) {
-                        changeDrawerCategory(if (dx < 0) 1 else -1)
-                    }
+                    if (kotlin.math.abs(dx) > dp(65)) changeDrawerCategory(if (dx < 0) 1 else -1)
                     false
                 }
                 else -> false
             }
         }
         drawer.addView(scroll, LinearLayout.LayoutParams(-1, 0, 1f))
-        val close = TextView(this).apply {
-            text = "←  Закрыть"
-            textSize = 14f
-            setTextColor(0xFF65C0FF.toInt())
-            setPadding(0, dp(14), 0, dp(8))
-            isFocusable = true
+        drawer.addView(TextView(this).apply {
+            text = "←   НАЗАД К ЭФИРУ"; textSize = 11f; letterSpacing = 0.08f
+            typeface = Typeface.DEFAULT_BOLD; setTextColor(0xFF64C2FF.toInt())
+            setPadding(0, dp(16), 0, dp(7)); isFocusable = true
             setOnClickListener { showChannelDrawer(false) }
-        }
-        drawer.addView(close)
-        val params = FrameLayout.LayoutParams(dp(340), -1, Gravity.START)
-        overlay.addView(drawer, params)
+        })
+        val width = (resources.displayMetrics.widthPixels * 0.88f).toInt().coerceAtMost(dp(390))
+        overlay.addView(drawer, FrameLayout.LayoutParams(width, -1, Gravity.START))
         return overlay
     }
 
