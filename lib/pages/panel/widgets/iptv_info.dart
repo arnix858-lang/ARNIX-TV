@@ -26,10 +26,13 @@ class PanelIptvInfo extends StatelessWidget {
           children: [
             // 频道名称
             Observer(
-              builder: (_) => Text(
-                iptvStore.currentIptv.name,
-                style: AppTheme.text(fg, 60.sp, weight: FontWeight.bold),
-              ),
+              builder: (_) => Row(mainAxisSize: MainAxisSize.min, children: [
+                if (iptvStore.currentIptv.logoUrl.isNotEmpty)
+                  Padding(padding: EdgeInsets.only(right: 18.w),
+                    child: Image.network(iptvStore.currentIptv.logoUrl, width: 82.w, height: 62.h, fit: BoxFit.contain,
+                      errorBuilder: (_, __, ___) => Icon(Icons.live_tv, color: fg, size: 48.sp))),
+                Text(iptvStore.currentIptv.name, style: AppTheme.text(fg, 60.sp, weight: FontWeight.bold)),
+              ]),
             ),
             SizedBox(width: 40.w),
             // 播放状态：正常时不渲染任何东西。
