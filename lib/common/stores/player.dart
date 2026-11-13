@@ -31,6 +31,7 @@ abstract class PlayerStoreBase with Store {
   @observable
   String errorInfo = '';
 
+  final Map<String, VideoPlayerController> _preparedControllers = {};
   Timer? _watchdogTimer;
   Timer? _freezeTimer;
   Timer? _bufferTimer;
@@ -56,8 +57,32 @@ abstract class PlayerStoreBase with Store {
     _disposed = false;
   }
 
-  Future<void> warmUp() async {
-    // ExoPlayer is initialized per media item by video_player.
+  Future<void> warmUp() async {}
+
+  /// Заранее подготавливает соседний канал, не включая его звук.
+  Future<void> prepareChannel(Iptv iptv) async {
+    final url = SourceHealthUtil.pickBest(iptv.url);
+    if (url.isEmpty || url == currentUrl || _preparedControllers.containsKey(url)) return;
+    try {
+      final uri = Uri.parse(url);
+      if (!uri.hasScheme || (uri.scheme != 'http' && uri.scheme != 'https')) return;
+      final controller = VideoPlayerController.networkUrl(uri, httpHeaders: const {
+        'User-Agent': 'Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36 Chrome/120 Mobile Safari/537.36',
+      });
+      await controller.initialize();
+      if (_disposed || url == currentUrl) {
+        await controller.dispose();
+        return;
+      }
+      _preparedControllers[url] = controller;
+      while (_preparedControllers.length > 2) {
+        final firstKey = _preparedControllers.keys.first;
+        final expired = _preparedControllers.remove(firstKey);
+        await expired?.dispose();
+      }
+    } catch (e) {
+      _logger.debug('Предзагрузка канала не удалась: $e');
+    }
   }
 
   Future<void> playIptv(Iptv iptv) async {
@@ -93,12 +118,10 @@ abstract class PlayerStoreBase with Store {
         throw FormatException('Неподдерживаемый адрес потока');
       }
 
-      final controller = VideoPlayerController.networkUrl(
-        uri,
-        httpHeaders: const {
-          'User-Agent': 'Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36 Chrome/120 Mobile Safari/537.36',
-        },
-      );
+      final controller = _preparedControllers.remove(url) ??
+          VideoPlayerController.networkUrl(uri, httpHeaders: const {
+            'User-Agent': 'Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36 Chrome/120 Mobile Safari/537.36',
+          });
       player = controller;
       controller.addListener(_onPlayerChanged);
 
@@ -243,6 +266,10 @@ abstract class PlayerStoreBase with Store {
       await old.dispose();
     }
     currentUrl = '';
+    for (final prepared in _preparedControllers.values) {
+      await prepared.dispose();
+    }
+    _preparedControllers.clear();
     state = PlayerState.waiting;
     aspectRatio = null;
     resolution = Size.zero;
