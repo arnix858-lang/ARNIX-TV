@@ -211,6 +211,16 @@ class _IptvPageState extends State<IptvPage> with WidgetsBindingObserver {
     await playerStore.playIptv(newIptv);
   }
 
+  void _warmAdjacentChannels(Iptv current) {
+    if (!mounted || current.name.isEmpty) return;
+    final next = iptvStore.getNextIptv(current);
+    final previous = iptvStore.getPrevIptv(current);
+    if (next.name != current.name) playerStore.prepareChannel(next);
+    if (previous.name != current.name && previous.name != next.name) {
+      playerStore.prepareChannel(previous);
+    }
+  }
+
   Future<void> _initData() async {
     playerStore.initPlayer(
       onFreeze: () {
@@ -260,6 +270,7 @@ class _IptvPageState extends State<IptvPage> with WidgetsBindingObserver {
         _prefsDebounce.debounce(_saveLastIptvIdx);
 
         await playerStore.playIptv(iptvStore.currentIptv);
+        _warmAdjacentChannels(iptv);
         _infoHideTimer?.cancel();
         _infoHideTimer = Timer(const Duration(seconds: 3), () {
           if (mounted && iptv == iptvStore.currentIptv) {
