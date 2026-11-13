@@ -17,6 +17,7 @@ class Iptv {
 
   /// tvg名称
   late final String tvgName;
+  late final String logoUrl;
 
   /// 回放类型（回看）。取自 m3u 的 `catchup` 属性：
   /// `append` = 把 [catchupSource] 追加到直播地址后；`default`/`shift`/`vod` = 直接用 [catchupSource] 作模板。
@@ -37,6 +38,7 @@ class Iptv {
     required this.name,
     required this.url,
     required this.tvgName,
+    this.logoUrl = '',
     this.catchup = '',
     this.catchupSource = '',
     this.catchupDays = 1,
