@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:fijkplayer_ijkfix/fijkplayer_ijkfix.dart';
+import 'package:video_player/video_player.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
@@ -335,11 +335,9 @@ class _IptvPageState extends State<IptvPage> with WidgetsBindingObserver {
           return Center(
             child: AspectRatio(
               aspectRatio: playerStore.aspectRatio ?? 16 / 9,
-              child: FijkView(
-                player: playerStore.player,
-                fit: FijkFit.fill,
-                color: Colors.black,
-              ),
+              child: playerStore.player == null
+                  ? const ColoredBox(color: Colors.black)
+                  : VideoPlayer(playerStore.player!),
             ),
           );
         },
