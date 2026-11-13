@@ -1,7 +1,5 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:fijkplayer_ijkfix/fijkplayer_ijkfix.dart';
 import 'package:get_it/get_it.dart';
 import 'package:video_player_example/common/index.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -37,11 +35,6 @@ void main() async {
   // 源健康度记录（哪些源播过失败）。未载入时退化为"所有源一样优先"，
   // 不阻塞启动，所以放在这里而不是更早。
   await SourceHealthUtil.load();
-
-  // fijkplayer 的日志级别默认是 Info，而 FijkLog.log 内部直接 print，
-  // release 包同样会往 logcat 刷。这里按构建模式收敛。
-  // （Android 上该接口会触发加载 native 库，所以放在创建 FijkPlayer 之前即可）
-  FijkLog.setLevel(kDebugMode ? FijkLogLevel.Info : FijkLogLevel.Silent);
 
   // 注册全局Store
   GetIt.I.registerSingleton(PlayerStore());
