@@ -232,6 +232,12 @@ class _PanelIptvListState extends State<PanelIptvList> {
               final favorite = iptvStore.isFavorite(iptv);
               return Row(
                 children: [
+                  if (iptv.logoUrl.isNotEmpty)
+                    Padding(
+                      padding: EdgeInsets.only(right: 10.w),
+                      child: Image.network(iptv.logoUrl, width: 46.w, height: 46.h, fit: BoxFit.contain,
+                        errorBuilder: (_, __, ___) => Icon(Icons.live_tv, size: 30.sp)),
+                    ),
                   if (favorite)
                     Padding(
                       padding: EdgeInsets.only(right: 8.w),
