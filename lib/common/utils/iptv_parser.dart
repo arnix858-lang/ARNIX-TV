@@ -12,12 +12,9 @@ IptvSourceFormat detectSourceFormat(String source) {
   return IptvSourceFormat.tvbox;
 }
 
-/// Разбор M3U: пропускаем пустые строки и служебные #EXTVLCOPT/#EXTGRP
-/// между #EXTINF и URL, поддерживаем CRLF.
 Future<List<IptvGroup>> parseM3uSource(String source) async {
   final lines = source.replaceAll('\r', '').split('\n');
   final groupList = <IptvGroup>[];
-
   var m3uHead = '';
   for (final raw in lines) {
     final line = raw.trim();
@@ -35,8 +32,7 @@ Future<List<IptvGroup>> parseM3uSource(String source) async {
     String? url;
     for (var j = i + 1; j < lines.length; j++) {
       final candidate = lines[j].trim();
-      if (candidate.isEmpty) continue;
-      if (candidate.startsWith('#')) continue;
+      if (candidate.isEmpty || candidate.startsWith('#')) continue;
       url = candidate;
       i = j;
       break;
@@ -58,7 +54,6 @@ Future<List<IptvGroup>> parseM3uSource(String source) async {
         return created;
       },
     );
-
     final catchupInfo = CatchupUtil.resolve(m3uHead, line);
     group.list.add(Iptv(
       idx: group.list.length,
@@ -90,10 +85,13 @@ Future<List<IptvGroup>> parseTvboxSource(String source) async {
       continue;
     }
 
-    final parts = line.split(',');
-    if (parts.length < 2 || group == null) continue;
-    final name = parts.first.trim();
-    final url = parts.sublist(1).join(',').trim();
+    // TVBox 支持中文逗号和英文逗号作为频道名/地址分隔符
+    final normalized = line.replaceAll('，', ',');
+    final comma = normalized.indexOf(',');
+    if (comma < 1 || group == null) continue;
+    final name = normalized.substring(0, comma).trim();
+    final url = normalized.substring(comma + 1).trim();
+    if (url.isEmpty) continue;
     group.list.add(Iptv(
       idx: group.list.length,
       channel: ++channel,
@@ -132,7 +130,6 @@ Future<List<IptvGroup>> parseInlineSource(String source) async {
         return created;
       },
     );
-
     group.list.add(Iptv(
       idx: group.list.length,
       channel: ++channel,
