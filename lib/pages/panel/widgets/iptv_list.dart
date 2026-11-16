@@ -196,7 +196,7 @@ class _PanelIptvListState extends State<PanelIptvList> {
       isSelected: isSelected,
       child: Observer(
         builder: (_) => Text(
-          '源 ${iptvStore.currentSourceIndex + 1}/$_sourceCount',
+          'Источник ${iptvStore.currentSourceIndex + 1}/$_sourceCount',
           style: AppTheme.text(AppTheme.tileText(context, isSelected), 30.sp),
         ),
       ),
