@@ -122,7 +122,7 @@ class _SettingsAppInfoState extends State<SettingsAppInfo> {
           ),
         ),
         Text(
-          'https://github.com/HTWMedia/ARNIX TV',
+          'https://github.com/arnix858-lang/ARNIX-TV',
           style: AppTheme.text(AppTheme.fgFaded(context, AppTheme.oSecondary), 30.sp),
         ),
       ],
