@@ -56,8 +56,8 @@ class _SettingsMainState extends State<SettingsMain> {
 
   void _showAssignUserDialog() {
     _showTvTextEditDialog(
-      title: '用户参数',
-      hint: '输入参数',
+      title: 'Параметры пользователя',
+      hint: 'Введите параметры',
       initialValue: PrefsUtil.getString('assign_user') ?? '',
       maxWidth: 500,
       fontSize: 16,
@@ -108,7 +108,7 @@ class _SettingsMainState extends State<SettingsMain> {
     if (allChannels.isEmpty) {
       ScaffoldMessenger.of(context)
         ..clearSnackBars()
-        ..showSnackBar(const SnackBar(content: Text('无可选频道，请先获取直播源')));
+        ..showSnackBar(const SnackBar(content: Text('Нет доступных каналов. Сначала загрузите плейлист')));
       return;
     }
 
@@ -132,14 +132,14 @@ class _SettingsMainState extends State<SettingsMain> {
 
   void _showCustomSourceDialog() {
     _showTvTextEditDialog(
-      title: '自定义直播源',
-      subtitle: '支持 m3u 订阅链接与 TVBox 链接，也可用手机扫码后在网页填写',
-      hint: '输入订阅链接',
+      title: 'Пользовательский плейлист',
+      subtitle: 'Поддерживаются ссылки M3U и TVBox. Отсканируйте QR-код телефоном для настройки',
+      hint: 'Введите ссылку на плейлист',
       initialValue: IptvSettings.customIptvSource,
       maxWidth: 700,
       fontSize: 24,
       extraButtons: [
-        TvDialogButton(label: '二维码', onPressed: _showServerQrcode),
+        TvDialogButton(label: 'QR-код', onPressed: _showServerQrcode),
       ],
       onSave: (value) {
         IptvSettings.customIptvSource = value.trim();
@@ -151,15 +151,15 @@ class _SettingsMainState extends State<SettingsMain> {
     );
   }
 
-  /// 默认源服务地址
+  /// Сервис источников地址
   ///
   /// 壳源分离的关键入口：把写死的服务端地址变成可配置项。
   /// 留空 = 停用内置源，App 退化为纯播放器，只加载用户自己的订阅。
   void _showDefaultApiDialog() {
     _showTvTextEditDialog(
-      title: '默认源服务',
-      subtitle: '留空表示停用内置源，届时只加载「自定义直播源」里填写的订阅',
-      hint: '输入接口地址',
+      title: 'Сервис источников',
+      subtitle: '留空表示停用内置源，届时只加载「Пользовательский плейлист」里填写的订阅',
+      hint: 'Введите адрес API',
       initialValue: IptvSettings.defaultIptvSourceApi,
       maxWidth: 700,
       fontSize: 20,
@@ -181,7 +181,7 @@ class _SettingsMainState extends State<SettingsMain> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
-                '扫描二维码设置',
+                '扫描QR-код设置',
                 style: AppTheme.text(fg, 36.sp),
               ),
               SizedBox(height: 12.h),
@@ -211,7 +211,7 @@ class _SettingsMainState extends State<SettingsMain> {
               ),
               SizedBox(height: 24.h),
               Text(
-                '点击空白处或按 ESC 返回',
+                'Нажмите вне окна или ESC, чтобы вернуться',
                 style: AppTheme.text(AppTheme.fgFaded(context, 0.5), 20.sp),
               ),
             ],
@@ -221,10 +221,10 @@ class _SettingsMainState extends State<SettingsMain> {
     );
   }
 
-  /// 社区与反馈：展示 QQ 群二维码
+  /// Сообщество и обратная связь：展示 QQ 群QR-код
   ///
-  /// 用内置图片资产而不是 qm.qq.com 的加群链接再生成二维码——
-  /// 那种链接带时效 key，会过期；官方生成的群二维码图最稳。
+  /// 用内置图片资产而不是 qm.qq.com 的加群链接再生成QR-код——
+  /// 那种链接带时效 key，会过期；官方生成的群QR-код图最稳。
   void _showCommunityQrcode() {
     final fg = AppTheme.fg(context);
     NavigatorUtil.push(
@@ -235,12 +235,12 @@ class _SettingsMainState extends State<SettingsMain> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
-                '扫码加入交流群',
+                'Отсканируйте QR-код, чтобы вступить в группу',
                 style: AppTheme.text(fg, 36.sp),
               ),
               SizedBox(height: 12.h),
               Text(
-                '频道失效、问题反馈、交流用法（任选其一，一群人满请进二群）',
+                'Сообщения о неработающих каналах, вопросы и обсуждение приложения',
                 style: AppTheme.text(AppTheme.fgFaded(context, 0.7), 24.sp),
               ),
               SizedBox(height: 24.h),
@@ -248,14 +248,14 @@ class _SettingsMainState extends State<SettingsMain> {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _groupQrCard('assets/images/qq-group1.jpg', '一群 2166024531'),
+                  _groupQrCard('assets/images/qq-group1.jpg', 'Группа 1: 2166024531'),
                   SizedBox(width: 48.w),
-                  _groupQrCard('assets/images/qq-group2.jpg', '二群 1067526818'),
+                  _groupQrCard('assets/images/qq-group2.jpg', 'Группа 2: 1067526818'),
                 ],
               ),
               SizedBox(height: 24.h),
               Text(
-                '点击空白处或按 ESC 返回',
+                'Нажмите вне окна или ESC, чтобы вернуться',
                 style: AppTheme.text(AppTheme.fgFaded(context, 0.5), 20.sp),
               ),
             ],
@@ -363,20 +363,20 @@ class _SettingsMainState extends State<SettingsMain> {
 
   void refreshSettingGroupList() {
     final groupList = [
-      SettingGroup(name: '应用', items: [
+      SettingGroup(name: 'Приложение', items: [
         SettingItem(
-          title: '用户参数',
+          title: 'Параметры пользователя',
           value: () {
             final v = PrefsUtil.getString('assign_user') ?? '';
             return v.length > 8 ? '${v.substring(0, 8)}...' : v;
           },
-          description: () => '点击编辑',
+          description: () => 'Нажмите, чтобы изменить',
           onTap: () => _showAssignUserDialog(),
         ),
         SettingItem(
-          title: '开机自启',
-          value: () => AppSettings.bootLaunch ? '启用' : '禁用',
-          description: () => '下次重启生效',
+          title: 'Автозапуск',
+          value: () => AppSettings.bootLaunch ? 'Включено' : 'Выключено',
+          description: () => 'Вступит в силу после перезапуска',
           onTap: () {
             AppSettings.bootLaunch = !AppSettings.bootLaunch;
             // 这类开关不走网络请求，没有异步回调替我们刷新，
@@ -385,24 +385,24 @@ class _SettingsMainState extends State<SettingsMain> {
           },
         ),
       ]),
-      SettingGroup(name: '控制', items: [
+      SettingGroup(name: 'Управление', items: [
         SettingItem(
-          title: '换台反转',
-          value: () => IptvSettings.channelChangeFlip ? '反转' : '正常',
+          title: 'Обратное переключение каналов',
+          value: () => IptvSettings.channelChangeFlip ? 'Обратный порядок' : 'Обычный порядок',
           description: () => IptvSettings.channelChangeFlip ? 'Вверх: следующий канал\nВниз: предыдущий канал' : 'Вверх: предыдущий канал\nВниз: следующий канал',
           onTap: () {
             IptvSettings.channelChangeFlip = !IptvSettings.channelChangeFlip;
-            // 同「开机自启」：纯开关，靠手动 rebuild 让同一个 item 重新求值 value/description
+            // 同「Автозапуск」：纯开关，靠手动 rebuild 让同一个 item 重新求值 value/description
             setState(() {});
           },
         ),
       ]),
-      SettingGroup(name: '直播源', items: [
+      SettingGroup(name: 'Источники каналов', items: [
         SettingItem(
-          title: '默认源服务',
+          title: 'Сервис источников',
           value: () {
             final api = IptvSettings.defaultIptvSourceApi;
-            if (api.isEmpty) return '已停用';
+            if (api.isEmpty) return 'Отключено';
             return api.length > 28 ? '${api.substring(0, 28)}...' : api;
           },
           description: () => IptvSettings.defaultIptvSourceApi.isEmpty
@@ -416,14 +416,14 @@ class _SettingsMainState extends State<SettingsMain> {
           },
         ),
         SettingItem(
-          title: '直播源精简',
+          title: 'Источники каналов精简',
           value: () {
-            if (!IptvSettings.iptvSourceSimplify) return '禁用';
+            if (!IptvSettings.iptvSourceSimplify) return 'Выключено';
             final count = IptvSettings.allowedChannels.length;
-            return count > 0 ? 'Включено ($count каналов)' : '启用';
+            return count > 0 ? 'Включено ($count каналов)' : 'Включено';
           },
           description: () {
-            if (!IptvSettings.iptvSourceSimplify) return '显示完整直播源';
+            if (!IptvSettings.iptvSourceSimplify) return '显示完整Источники каналов';
             final count = IptvSettings.allowedChannels.length;
             if (count > 0) return 'Показывать только выбранные каналы; нажмите для настройки';
             return 'Показывать сокращённый список (федеральные и региональные каналы)';
@@ -445,10 +445,10 @@ class _SettingsMainState extends State<SettingsMain> {
           },
         ),
         SettingItem(
-          title: '自定义直播源',
-          value: () => IptvSettings.customIptvSource.isNotEmpty ? '已启用' : '未启用',
+          title: 'Пользовательский плейлист',
+          value: () => IptvSettings.customIptvSource.isNotEmpty ? '已Включено' : '未Включено',
           description: () {
-            if (IptvSettings.customIptvSource.isEmpty) return '点击设置订阅链接';
+            if (IptvSettings.customIptvSource.isEmpty) return 'Нажмите, чтобы указать ссылку на плейлист';
             final src = IptvSettings.customIptvSource;
             return src.length > 35 ? '${src.substring(0, 35)}...' : src;
           },
@@ -461,9 +461,9 @@ class _SettingsMainState extends State<SettingsMain> {
           },
         ),
         SettingItem(
-          title: '直播源缓存',
+          title: 'Источники каналов缓存',
           value: () => _formatDuration(IptvSettings.iptvSourceCacheKeepTime),
-          description: () => IptvSettings.iptvSourceCacheTime > 0 ? "已缓存(点击清除缓存)" : "未缓存",
+          description: () => IptvSettings.iptvSourceCacheTime > 0 ? "Кэш сохранён (нажмите, чтобы очистить)" : "Кэш отсутствует",
           onTap: () {
             if (IptvSettings.iptvSourceCacheTime > 0) {
               IptvSettings.iptvSourceCacheTime = 0;
@@ -472,10 +472,10 @@ class _SettingsMainState extends State<SettingsMain> {
           },
         ),
       ]),
-      SettingGroup(name: '节目单', items: [
+      SettingGroup(name: 'Телепрограмма', items: [
         SettingItem(
-          title: '节目单',
-          value: () => IptvSettings.epgEnable ? '启用' : '禁用',
+          title: 'Телепрограмма',
+          value: () => IptvSettings.epgEnable ? 'Включено' : 'Выключено',
           description: () => 'При первой загрузке возможны кратковременные пропуски кадров',
           onTap: () {
             IptvSettings.epgEnable = !IptvSettings.epgEnable;
@@ -483,9 +483,9 @@ class _SettingsMainState extends State<SettingsMain> {
           },
         ),
         SettingItem(
-          title: '自定义节目单',
-          value: () => IptvSettings.customEpgXml.isNotEmpty ? '已启用' : '未启用',
-          description: () => IptvSettings.customEpgXml.isNotEmpty ? '长按恢复默认' : 'Нажмите, чтобы показать QR-код адреса',
+          title: '自定义Телепрограмма',
+          value: () => IptvSettings.customEpgXml.isNotEmpty ? '已Включено' : '未Включено',
+          description: () => IptvSettings.customEpgXml.isNotEmpty ? 'Удерживайте, чтобы восстановить настройки по умолчанию' : 'Нажмите, чтобы показать QR-код адреса',
           onTap: () => _showServerQrcode(),
           onLongTap: () {
             IptvSettings.customEpgXml = '';
@@ -495,9 +495,9 @@ class _SettingsMainState extends State<SettingsMain> {
           },
         ),
         SettingItem(
-          title: '节目单缓存',
-          value: () => '当天',
-          description: () => IptvSettings.epgXmlCacheTime > 0 ? "已缓存(点击清除缓存)" : "未缓存",
+          title: 'Телепрограмма缓存',
+          value: () => 'Сегодня',
+          description: () => IptvSettings.epgXmlCacheTime > 0 ? "Кэш сохранён (нажмите, чтобы очистить)" : "Кэш отсутствует",
           onTap: () {
             if (IptvSettings.epgXmlCacheTime > 0) {
               IptvSettings.epgXmlCacheTime = 0;
@@ -507,7 +507,7 @@ class _SettingsMainState extends State<SettingsMain> {
           },
         ),
         SettingItem(
-          title: '回看诊断',
+          title: 'Проверка архива',
           value: () => 'Смещение ${IptvSettings.catchupUtcOffsetHours} ч',
           description: () => 'Проверить доступность архива для текущего канала; удерживайте, чтобы изменить часовой пояс',
           onTap: () => _runCatchupProbe(),
@@ -524,28 +524,28 @@ class _SettingsMainState extends State<SettingsMain> {
           },
         ),
       ]),
-      SettingGroup(name: '社区与反馈', items: [
+      SettingGroup(name: 'Сообщество и обратная связь', items: [
         SettingItem(
-          title: 'QQ 交流群',
+          title: 'Группы QQ',
           value: () => '2166024531 / 1067526818',
           description: () => 'Сообщения о неработающих каналах и помощь. Нажмите, чтобы открыть QR-код',
           onTap: () => _showCommunityQrcode(),
         ),
         SettingItem(
-          title: '问题反馈',
+          title: 'Сообщить о проблеме',
           value: () => '',
           description: () => 'Также можно оставить сообщение в GitHub Discussions',
           onTap: () {
             _showProbeResult(
               'GitHub Discussions',
-              'github.com/arnix858-lang/ARNIX-TV → Обсуждения\n发帖时请带上：频道名 + 现象 + 地区/网络 + App 版本',
+              'github.com/arnix858-lang/ARNIX-TV → Обсуждения\nВ сообщении укажите канал, описание проблемы, регион/сеть и версию приложения',
             );
           },
         ),
       ]),
-      SettingGroup(name: '更多', items: [
+      SettingGroup(name: 'Дополнительно', items: [
         SettingItem(
-          title: '更多设置',
+          title: 'Дополнительно设置',
           value: () => '',
           description: () => 'Откройте адрес для настройки: ${HttpServerUtil.serverUrl}',
           onTap: () => _showServerQrcode(),
@@ -637,7 +637,7 @@ class _SettingsMainState extends State<SettingsMain> {
 
     final urls =
         CatchupUtil.buildUrls(iptv, startMs: target.start, stopMs: target.stop);
-    LoggerUtil.debug('回看探测候选: ${urls.join('  |  ')}');
+    LoggerUtil.debug('Кандидаты ссылок архива: ${urls.join('  |  ')}');
     if (urls.isEmpty) {
       _showProbeResult('Не удалось сформировать ссылку архива', 'Шаблон catchup для ${iptv.name} пуст');
       return;
@@ -659,10 +659,10 @@ class _SettingsMainState extends State<SettingsMain> {
         continue;
       }
       if (live.status >= 0 && live.bytes.isNotEmpty && _sameBytes(live.bytes, r.bytes)) {
-        report.add('HTTP ${r.status}，但内容与直播逐字节相同 → 参数被忽略');
+        report.add('HTTP ${r.status}, содержимое совпадает с прямым эфиром — параметры проигнорированы');
         continue;
       }
-      report.add('HTTP ${r.status} 且内容与直播不同，疑似真实录像');
+      report.add('HTTP ${r.status}, содержимое отличается от прямого эфира — возможно, это запись');
       playUrl ??= url;
     }
 
