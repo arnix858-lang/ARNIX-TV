@@ -4,7 +4,7 @@
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <group android:scaleX="4.5" android:scaleY="4.5">
+    <group android:pivotX="0" android:pivotY="0" android:scaleX="4.5" android:scaleY="4.5">
         <!-- Material Icons: tv -->
         <path
             android:fillColor="#FFFFFFFF"
