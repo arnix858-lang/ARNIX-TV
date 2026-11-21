@@ -22,6 +22,15 @@ enum IptvListStatus {
   failed,
 }
 
+/// Состояние загрузки телепрограммы
+enum EpgLoadStatus {
+  idle,
+  loading,
+  loaded,
+  failed,
+  disabled,
+}
+
 class IptvStore = IptvStoreBase with _$IptvStore;
 
 abstract class IptvStoreBase with Store {
@@ -51,6 +60,11 @@ abstract class IptvStoreBase with Store {
   /// 节目单
   @observable
   List<Epg>? epgList;
+
+  /// Статус EPG обновляется независимо от списка каналов.
+  /// Observable используется напрямую, чтобы не менять сгенерированный MobX-файл.
+  final Observable<EpgLoadStatus> epgStatus =
+      Observable(EpgLoadStatus.idle);
 
   /// 节目单索引（频道名 → Epg），用于 O(1) 查找
   Map<String, Epg> _epgMap = {};
@@ -222,27 +236,51 @@ abstract class IptvStoreBase with Store {
     } catch (_) {}
   }
 
-  /// 刷新节目单（缓存优先，无缓存时立即网络获取并异步更新界面）
+  /// Обновление EPG: статус показывает реальную стадию загрузки.
   @action
   Future<void> refreshEpgList() async {
     final channels = iptvList.map((e) => e.tvgName).toList();
-
-    // Phase 1: 立即从缓存获取
-    final cached = await EpgUtil.getCachedOnly(channels);
-    if (cached != null && cached.isNotEmpty) {
-      epgList = cached;
-      _epgMap = {for (var epg in cached) epg.channel: epg};
+    if (!IptvSettings.epgEnable) {
+      runInAction(() => epgStatus.value = EpgLoadStatus.disabled);
+      return;
+    }
+    if (channels.isEmpty) {
+      runInAction(() => epgStatus.value = EpgLoadStatus.idle);
+      return;
     }
 
-    // Phase 2: 异步从网络获取最新数据，完成后自动更新UI
-    EpgUtil.refreshAndGet(channels).then((freshList) {
-      if (freshList.isNotEmpty) {
+    runInAction(() => epgStatus.value = EpgLoadStatus.loading);
+    var hasCachedData = false;
+    try {
+      // Сначала показываем кэш, если он есть, пока идёт сетевое обновление.
+      final cached = await EpgUtil.getCachedOnly(channels);
+      if (cached != null && cached.isNotEmpty) {
+        hasCachedData = true;
         runInAction(() {
-          epgList = freshList;
-          _epgMap = {for (var epg in freshList) epg.channel: epg};
+          epgList = cached;
+          _epgMap = {for (var epg in cached) epg.channel: epg};
         });
       }
-    });
+
+      final freshList = await EpgUtil.refreshAndGet(channels);
+      runInAction(() {
+        if (freshList.isNotEmpty) {
+          epgList = freshList;
+          _epgMap = {for (var epg in freshList) epg.channel: epg};
+          epgStatus.value = EpgLoadStatus.loaded;
+        } else {
+          // Если сеть недоступна, но есть сохранённая программа,
+          // продолжаем показывать кэш и не сообщаем о полной потере EPG.
+          epgStatus.value =
+              hasCachedData ? EpgLoadStatus.loaded : EpgLoadStatus.failed;
+        }
+      });
+    } catch (_) {
+      runInAction(() {
+        epgStatus.value =
+            hasCachedData ? EpgLoadStatus.loaded : EpgLoadStatus.failed;
+      });
+    }
   }
 
   /// 手动输入频道号
