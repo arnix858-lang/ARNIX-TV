@@ -169,6 +169,19 @@ abstract class IptvStoreBase with Store {
   /// 刷新直播源列表（优先缓存，过期时后台静默更新）
   @action
   Future<void> refreshIptvList() async {
+    // Нет ни встроенного источника, ни пользовательской ссылки:
+    // это штатное первое состояние приложения, а не ошибка сети.
+    // Не запускаем HTTP-запрос с пустым URL и показываем экран добавления плейлиста.
+    if (IptvSettings.defaultIptvSourceApi.trim().isEmpty &&
+        IptvSettings.customIptvSource.trim().isEmpty) {
+      runInAction(() {
+        iptvGroupList = [];
+        currentIptv = Iptv.empty;
+        listStatus.value = IptvListStatus.ready;
+      });
+      return;
+    }
+
     final now = DateTime.now().millisecondsSinceEpoch;
     final builtinExpired = now - IptvSettings.iptvSourceCacheTime >= IptvSettings.iptvSourceCacheKeepTime;
     final customStale = IptvSettings.customIptvSource.isNotEmpty && IptvUtil.isCustomSourceCacheStale();
