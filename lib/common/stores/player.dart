@@ -86,10 +86,23 @@ abstract class PlayerStoreBase with Store {
   }
 
   Future<void> playIptv(Iptv iptv) async {
-    await _startPlay(iptv, SourceHealthUtil.pickBest(iptv.url), playback: false);
+    // Пустой элемент используется до добавления плейлиста.
+    // Не передаём пустой URL в Uri.parse и не показываем FormatException.
+    final url = SourceHealthUtil.pickBest(iptv.url);
+    if (iptv.name.trim().isEmpty || url.trim().isEmpty) {
+      _cancelTimers();
+      currentUrl = '';
+      errorInfo = '';
+      state = PlayerState.waiting;
+      resolution = Size.zero;
+      aspectRatio = null;
+      return;
+    }
+    await _startPlay(iptv, url, playback: false);
   }
 
   Future<void> playCatchup(Iptv source, {required String url}) async {
+    if (url.trim().isEmpty) return;
     await _startPlay(source, url, playback: true);
   }
 
