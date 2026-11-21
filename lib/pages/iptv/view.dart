@@ -526,36 +526,69 @@ class _IptvPageState extends State<IptvPage> with WidgetsBindingObserver {
     return Observer(
       builder: (_) {
         final status = iptvStore.listStatus.value;
-        if (status == IptvListStatus.ready) return const SizedBox.shrink();
+        final hasChannels = iptvStore.iptvList.isNotEmpty;
 
+        // После первой загрузки без встроенного источника показываем понятную
+        // инструкцию вместо пустого чёрного экрана.
+        if (status == IptvListStatus.ready && hasChannels) {
+          return const SizedBox.shrink();
+        }
+
+        final empty = status == IptvListStatus.ready && !hasChannels;
         final failed = status == IptvListStatus.failed;
 
         return Positioned.fill(
           child: Container(
             color: AppTheme.scrim,
             child: Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  failed
-                      ? const Icon(Icons.error_outline,
-                          color: Colors.orange, size: 56)
-                      : CircularProgressIndicator(
-                          color: AppTheme.fgFaded(context, AppTheme.oSecondary)),
-                  SizedBox(height: 20.h),
-                  Text(
-                    failed ? 'Не удалось загрузить список каналов' : 'Загрузка списка каналов…',
-                    style: AppTheme.text(AppTheme.fg(context), 28.sp),
-                  ),
-                  if (failed) ...[
-                    SizedBox(height: 10.h),
-                    Text(
-                      'Проверьте подключение к интернету и нажмите OK для повтора',
-                      style: AppTheme.text(
-                          AppTheme.fgFaded(context, AppTheme.oTertiary), 22.sp),
+              child: Padding(
+                padding: EdgeInsets.symmetric(horizontal: 28.w),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      empty
+                          ? Icons.playlist_add
+                          : failed
+                              ? Icons.error_outline
+                              : Icons.live_tv,
+                      color: empty
+                          ? AppTheme.fg(context)
+                          : failed
+                              ? Colors.orange
+                              : AppTheme.fgFaded(context, AppTheme.oSecondary),
+                      size: 64,
                     ),
+                    SizedBox(height: 20.h),
+                    Text(
+                      empty
+                          ? 'Для просмотра ТВ и телепередач, пожалуйста, вставьте ссылку или выберите файл плейлиста'
+                          : failed
+                              ? 'Не удалось загрузить список каналов'
+                              : 'Загрузка списка каналов…',
+                      textAlign: TextAlign.center,
+                      style: AppTheme.text(AppTheme.fg(context), 26.sp),
+                    ),
+                    if (empty) ...[
+                      SizedBox(height: 24.h),
+                      ElevatedButton.icon(
+                        autofocus: true,
+                        onPressed: _openSettings,
+                        icon: const Icon(Icons.add_link),
+                        label: const Text('Добавить плейлист'),
+                      ),
+                    ],
+                    if (failed) ...[
+                      SizedBox(height: 10.h),
+                      Text(
+                        'Проверьте подключение к интернету и нажмите OK для повтора',
+                        textAlign: TextAlign.center,
+                        style: AppTheme.text(
+                            AppTheme.fgFaded(context, AppTheme.oTertiary), 22.sp),
+                      ),
+                    ],
                   ],
-                ],
+                ),
               ),
             ),
           ),
