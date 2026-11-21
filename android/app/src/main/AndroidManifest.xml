@@ -1,5 +1,5 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-  package="com.htwmedia.htv">
+  package="com.arnix.iptv">
 
   <uses-feature android:name="android.software.leanback" android:required="false" />
   <uses-feature android:name="android.hardware.touchscreen" android:required="false" />
@@ -7,7 +7,7 @@
   <application
     android:icon="@mipmap/ic_launcher"
     android:banner="@mipmap/ic_launcher"
-    android:label="ARNIX TV"
+    android:label="ARNIX IPTV"
       android:hardwareAccelerated="true"
       android:largeHeap="true"
       android:networkSecurityConfig="@xml/network_security_config">
