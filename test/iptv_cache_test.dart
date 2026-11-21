@@ -101,7 +101,7 @@ void main() {
       expect(groups[0].list.length, 2);
       expect(groups[0].list[0].name, 'CCTV1');
       expect(groups[0].list[0].url, 'http://a/1.m3u8;http://c/1.m3u8');
-      expect(groups[1].name, '自定义组(自定义)');
+      expect(groups[1].name, '自定义组 (пользовательские)');
       expect(groups[1].list.single.name, '凤凰卫视');
       expect(groups[1].list.single.channel, 3);
     });
@@ -110,7 +110,7 @@ void main() {
       final groups = await IptvUtil.buildMergedGroups('', _m3uCustom);
 
       expect(groups.length, 1);
-      expect(groups.single.name, '自定义组(自定义)');
+      expect(groups.single.name, '自定义组 (пользовательские)');
       expect(groups.single.list.length, 2);
     });
 
@@ -176,7 +176,7 @@ void main() {
 
       expect(groups, isNotNull);
       expect(groups!.length, 2);
-      expect(groups.any((g) => g.name == '自定义组(自定义)'), isTrue);
+      expect(groups.any((g) => g.name == '自定义组 (пользовательские)'), isTrue);
       expect(groups.first.list.first.url, 'http://a/1.m3u8;http://c/1.m3u8');
     });
 
