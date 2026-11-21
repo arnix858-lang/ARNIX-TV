@@ -219,7 +219,7 @@ class IptvUtil {
 
   /// 获取已缓存的源列表（无网络请求，内置源 + 自定义源缓存合并）
   static Future<List<IptvGroup>?> getCachedGroups() async {
-    final builtinCache = await _getCache();
+    final builtinCache = IptvSettings.defaultIptvSourceApi.isEmpty ? '' : await _getCache();
     final customCache = IptvSettings.customIptvSource.isNotEmpty ? await _getCustomCache() : '';
     if (builtinCache.isEmpty && customCache.isEmpty) return null;
     return buildMergedGroups(builtinCache, customCache);
@@ -246,6 +246,7 @@ class IptvUtil {
               name: item.name,
               url: item.url,
               tvgName: item.tvgName,
+              logoUrl: item.logoUrl,
               catchup: item.catchup,
               catchupSource: item.catchupSource,
               catchupDays: item.catchupDays,
@@ -316,6 +317,7 @@ class IptvUtil {
             name: iptv.name,
             url: nameToUrls[iptv.name]!,
             tvgName: iptv.tvgName,
+            logoUrl: iptv.logoUrl,
             catchup: iptv.catchup,
             catchupSource: iptv.catchupSource,
             catchupDays: iptv.catchupDays,
@@ -354,6 +356,7 @@ class IptvUtil {
           name: old.name,
           url: old.url,
           tvgName: old.tvgName,
+          logoUrl: old.logoUrl,
           catchup: old.catchup,
           catchupSource: old.catchupSource,
           catchupDays: old.catchupDays,
@@ -380,6 +383,7 @@ class IptvUtil {
         name: iptv.name,
         url: iptv.url,
         tvgName: iptv.tvgName,
+        logoUrl: iptv.logoUrl,
         catchup: iptv.catchup,
         catchupSource: iptv.catchupSource,
         catchupDays: iptv.catchupDays,
@@ -402,7 +406,8 @@ class IptvUtil {
 
     // 1. 获取内置源（缓存优先）
     String builtinSource = '';
-    if (t0 - IptvSettings.iptvSourceCacheTime < IptvSettings.iptvSourceCacheKeepTime) {
+    if (IptvSettings.defaultIptvSourceApi.isNotEmpty &&
+        t0 - IptvSettings.iptvSourceCacheTime < IptvSettings.iptvSourceCacheKeepTime) {
       final cache = await _getCache();
       if (cache.isNotEmpty) {
         _logger.debug('使用缓存直播源');
@@ -410,7 +415,7 @@ class IptvUtil {
       }
     }
 
-    if (builtinSource.isEmpty) {
+    if (builtinSource.isEmpty && IptvSettings.defaultIptvSourceApi.isNotEmpty) {
       final source = await _fetchBuiltinSource();
       if (source.isNotEmpty) {
         final cacheFile = await _getCacheFile();
