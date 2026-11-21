@@ -177,17 +177,17 @@ void main() {
 
     expect(find.text('CCTV-1'), findsOneWidget);
     expect(find.text('浙江卫视'), findsOneWidget);
-    expect(find.text('已选 1'), findsOneWidget);
+    expect(find.text('Выбрано: 1'), findsOneWidget);
 
     // 全选
-    await tester.tap(find.text('全选'));
+    await tester.tap(find.text('Выбрать все'));
     await tester.pumpAndSettle();
-    expect(find.text('已选 4'), findsOneWidget);
+    expect(find.text('Выбрано: 4'), findsOneWidget);
 
     // 取消一个：焦点默认在列表首行，点第三行即可（Tap 与 OK 键走同一套 _toggle）
     await tester.tap(find.text('浙江卫视'));
     await tester.pumpAndSettle();
-    expect(find.text('已选 3'), findsOneWidget);
+    expect(find.text('Выбрано: 3'), findsOneWidget);
 
     await tester.tap(find.textContaining('保存'));
     await tester.pumpAndSettle();
