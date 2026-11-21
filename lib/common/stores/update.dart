@@ -25,7 +25,7 @@ int _compareVersions(String version1, String version2) {
   return 0;
 }
 
-final _logger = LoggerUtil.create(['更新']);
+final _logger = LoggerUtil.create(['Обновление']);
 
 abstract class UpdateStoreBase with Store {
   @observable
@@ -139,7 +139,7 @@ abstract class UpdateStoreBase with Store {
     if (!hasUpdate || updating) return;
 
     updating = true;
-    downloadProgress = '准备下载...';
+    downloadProgress = 'Подготовка к загрузке…';
     _logger.debug('正在下载更新: ${latestRelease.tagName}');
 
     try {
@@ -154,7 +154,7 @@ abstract class UpdateStoreBase with Store {
         savePath: savePath,
         onProgress: (progress) {
           final percent = (progress * 100).toInt();
-          downloadProgress = '下载中 $percent%';
+          downloadProgress = 'Загрузка: $percent%';
           _logger.debug('下载进度: $percent%');
         },
       );
@@ -169,19 +169,19 @@ abstract class UpdateStoreBase with Store {
         savePath: savePath,
         onProgress: (progress) {
           final percent = (progress * 100).toInt();
-          downloadProgress = '下载中 $percent%';
+          downloadProgress = 'Загрузка: $percent%';
         },
       );
 
       if (finalPath == null) {
         _logger.debug('下载更新失败');
-        downloadProgress = '下载失败';
+        downloadProgress = 'Ошибка загрузки';
         updating = false;
         return;
       }
 
       _logger.debug('下载更新成功: $finalPath');
-      downloadProgress = '正在安装...';
+      downloadProgress = 'Установка…';
 
       await _installApk(finalPath);
 
@@ -189,7 +189,7 @@ abstract class UpdateStoreBase with Store {
       downloadProgress = '';
     } catch (e, st) {
       _logger.handle(e, st);
-      downloadProgress = '更新失败';
+      downloadProgress = 'Ошибка обновления';
       updating = false;
     }
   }
