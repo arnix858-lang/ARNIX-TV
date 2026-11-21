@@ -264,7 +264,9 @@ class _ChannelSelectDialogState extends State<ChannelSelectDialog>
             }),
           ),
           SizedBox(height: 12.h),
-          Row(
+          Wrap(
+            spacing: 12.w,
+            runSpacing: 8.h,
             children: [
               TvDialogChip(
                 label: 'Выбрать все',
@@ -275,7 +277,6 @@ class _ChannelSelectDialogState extends State<ChannelSelectDialog>
                   _selected.addAll(widget.allChannels);
                 }),
               ),
-              SizedBox(width: 16.w),
               TvDialogChip(
                 label: 'Снять выделение',
                 highlighted: _area == areaAction && _actionIndex == 1,
@@ -285,12 +286,14 @@ class _ChannelSelectDialogState extends State<ChannelSelectDialog>
                   _selected.clear();
                 }),
               ),
-              const Spacer(),
-              Text(
-                'Выбрано: ${_selected.length}',
-                style: AppTheme.text(AppTheme.fgFaded(context, AppTheme.oTertiary), 22.sp),
-              ),
             ],
+          ),
+          Align(
+            alignment: Alignment.centerRight,
+            child: Text(
+              'Выбрано: ${_selected.length}',
+              style: AppTheme.text(AppTheme.fgFaded(context, AppTheme.oTertiary), 22.sp),
+            ),
           ),
           SizedBox(height: 8.h),
           Expanded(child: _buildList(channels)),
