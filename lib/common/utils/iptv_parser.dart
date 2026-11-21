@@ -61,7 +61,11 @@ Future<List<IptvGroup>> parseM3uSource(String source) async {
       groupIdx: group.idx,
       name: name,
       url: url,
-      tvgName: (RegExp('tvg-name="([^"]*)"', caseSensitive: false).firstMatch(line)?.group(1) ?? name).trim(),
+      // Для EPG главным ключом является tvg-id; tvg-name и имя канала
+      // остаются резервными вариантами для плейлистов без идентификатора.
+      tvgName: (RegExp('tvg-id="([^"]*)"', caseSensitive: false).firstMatch(line)?.group(1) ??
+          RegExp('tvg-name="([^"]*)"', caseSensitive: false).firstMatch(line)?.group(1) ??
+          name).trim(),
       logoUrl: (RegExp('tvg-logo="([^"]*)"', caseSensitive: false).firstMatch(line)?.group(1) ?? RegExp('logo="([^"]*)"', caseSensitive: false).firstMatch(line)?.group(1) ?? '').trim(),
       catchup: catchupInfo.type,
       catchupSource: catchupInfo.source,
