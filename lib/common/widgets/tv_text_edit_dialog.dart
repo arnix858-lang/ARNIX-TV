@@ -71,8 +71,8 @@ class _TvTextEditDialogState extends State<TvTextEditDialog>
     _controller = TextEditingController(text: widget.initialValue);
     _buttons = <TvDialogButton>[
       ...widget.extraButtons,
-      TvDialogButton(label: '取消', onPressed: () => Navigator.pop(context)),
-      TvDialogButton(label: '保存', onPressed: _save),
+      TvDialogButton(label: 'Отмена', onPressed: () => Navigator.pop(context)),
+      TvDialogButton(label: 'Сохранить', onPressed: _save),
     ];
     _buttonNodes = List.generate(_buttons.length, (_) => FocusNode());
 
