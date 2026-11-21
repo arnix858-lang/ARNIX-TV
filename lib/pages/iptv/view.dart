@@ -173,8 +173,8 @@ class _IptvPageState extends State<IptvPage> with WidgetsBindingObserver {
         ..clearSnackBars()
         ..showSnackBar(SnackBar(
           content: Text(sources.length > 1
-              ? "所有直播源均不可用"
-              : "该直播源暂不可用，请稍后重试"),
+              ? "Все источники канала недоступны"
+              : "Этот источник временно недоступен. Попробуйте позже."),
           duration: const Duration(milliseconds: 1500),
         ));
       playerStore.isSwitching = false;
@@ -228,7 +228,7 @@ class _IptvPageState extends State<IptvPage> with WidgetsBindingObserver {
         ScaffoldMessenger.of(context)
           ..clearSnackBars()
           ..showSnackBar(const SnackBar(
-            content: Text("播放卡顿，尝试切换源..."),
+            content: Text("Воспроизведение прервано, переключаем источник…"),
             duration: Duration(milliseconds: 1500),
           ));
         _switchToNextAvailableSource();
@@ -238,7 +238,7 @@ class _IptvPageState extends State<IptvPage> with WidgetsBindingObserver {
         ScaffoldMessenger.of(context)
           ..clearSnackBars()
           ..showSnackBar(const SnackBar(
-            content: Text("播放错误，尝试切换源..."),
+            content: Text("Ошибка воспроизведения, переключаем источник…"),
             duration: Duration(milliseconds: 1500),
           ));
         _switchToNextAvailableSource();
@@ -251,7 +251,7 @@ class _IptvPageState extends State<IptvPage> with WidgetsBindingObserver {
       ScaffoldMessenger.of(context)
         ..clearSnackBars()
         ..showSnackBar(const SnackBar(
-          content: Text("回看结束，回到直播"),
+          content: Text("Архив завершён. Возврат к прямому эфиру."),
           duration: Duration(milliseconds: 1500),
         ));
       playerStore.playIptv(iptvStore.currentIptv);
@@ -544,13 +544,13 @@ class _IptvPageState extends State<IptvPage> with WidgetsBindingObserver {
                           color: AppTheme.fgFaded(context, AppTheme.oSecondary)),
                   SizedBox(height: 20.h),
                   Text(
-                    failed ? '直播源获取失败' : '正在获取直播源…',
+                    failed ? 'Не удалось загрузить список каналов' : 'Загрузка списка каналов…',
                     style: AppTheme.text(AppTheme.fg(context), 28.sp),
                   ),
                   if (failed) ...[
                     SizedBox(height: 10.h),
                     Text(
-                      '请检查网络后，按 OK 键重试',
+                      'Проверьте подключение к интернету и нажмите OK для повтора',
                       style: AppTheme.text(
                           AppTheme.fgFaded(context, AppTheme.oTertiary), 22.sp),
                     ),
