@@ -322,11 +322,46 @@ class _SettingsMainState extends State<SettingsMain> {
     );
   }
 
+  IconData _settingIcon(SettingItem item) {
+    switch (item.title) {
+      case 'Параметры пользователя':
+        return Icons.person_outline_rounded;
+      case 'Автозапуск':
+        return Icons.power_settings_new_rounded;
+      case 'Обратное переключение каналов':
+        return Icons.swap_vert_rounded;
+      case 'Сервис источников':
+        return Icons.dns_rounded;
+      case 'Фильтрация каналов':
+        return Icons.filter_list_rounded;
+      case 'Пользовательский плейлист':
+        return Icons.playlist_play_rounded;
+      case 'Кэш списка каналов':
+        return Icons.cached_rounded;
+      case 'Телепрограмма':
+        return Icons.calendar_month_rounded;
+      case 'Пользовательская телепрограмма (EPG)':
+        return Icons.event_note_rounded;
+      case 'Кэш телепрограммы':
+        return Icons.event_available_rounded;
+      case 'Проверка архива':
+        return Icons.history_rounded;
+      case 'Группы QQ':
+        return Icons.groups_rounded;
+      case 'Сообщить о проблеме':
+        return Icons.bug_report_outlined;
+      case 'Дополнительные настройки':
+        return Icons.tune_rounded;
+      default:
+        return Icons.settings_rounded;
+    }
+  }
+
   Widget _buildSettingItem(SettingItem item, bool isSelected) {
     final textColor = AppTheme.tileText(context, isSelected);
 
     return Container(
-      padding: const EdgeInsets.all(30).r,
+      padding: EdgeInsets.symmetric(horizontal: 22.w, vertical: 20.h),
       decoration: BoxDecoration(
         color: isSelected
             ? AppTheme.fg(context)
@@ -338,21 +373,47 @@ class _SettingsMainState extends State<SettingsMain> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              Text(
-                item.title,
-                style: AppTheme.text(textColor, 30.sp),
+              Container(
+                width: 42.w,
+                height: 42.w,
+                decoration: BoxDecoration(
+                  color: Colors.black.withOpacity(0.72),
+                  borderRadius: BorderRadius.circular(12).r,
+                ),
+                alignment: Alignment.center,
+                child: Icon(
+                  _settingIcon(item),
+                  color: Colors.white,
+                  size: 25.sp,
+                ),
               ),
-              Text(
-                item.value(),
-                style: AppTheme.text(textColor, 30.sp),
+              SizedBox(width: 12.w),
+              Expanded(
+                child: Text(
+                  item.title,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTheme.text(textColor, 24.sp, weight: FontWeight.w600),
+                ),
+              ),
+              SizedBox(width: 8.w),
+              Flexible(
+                child: Text(
+                  item.value(),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.end,
+                  style: AppTheme.text(textColor, 20.sp),
+                ),
               ),
             ],
           ),
+          SizedBox(height: 12.h),
           Text(
             item.description(),
-            style: AppTheme.text(textColor, 24.sp),
+            style: AppTheme.text(textColor, 19.sp),
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
           )
