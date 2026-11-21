@@ -166,6 +166,7 @@ void main() {
     });
 
     test('内置+自定义缓存存在且地址匹配时合并返回', () async {
+      IptvSettings.defaultIptvSourceApi = 'https://example.test/builtin';
       File('${tmpDir.path}/iptv.txt').writeAsStringSync(_jsonBuiltin);
       File('${tmpDir.path}/custom.txt').writeAsStringSync(_m3uCustom);
       IptvSettings.customIptvSource = _customUrl;
@@ -181,6 +182,7 @@ void main() {
     });
 
     test('自定义缓存地址与当前配置不匹配时忽略自定义缓存', () async {
+      IptvSettings.defaultIptvSourceApi = 'https://example.test/builtin';
       File('${tmpDir.path}/iptv.txt').writeAsStringSync(_jsonBuiltin);
       File('${tmpDir.path}/custom.txt').writeAsStringSync(_m3uCustom);
       IptvSettings.customIptvSource = 'http://custom.test/new.m3u';
