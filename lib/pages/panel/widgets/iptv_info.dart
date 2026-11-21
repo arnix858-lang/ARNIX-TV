@@ -61,50 +61,75 @@ class PanelIptvInfo extends StatelessWidget {
             style: AppTheme.text(programmeColor, 30.sp),
           ),
         ),
-        SizedBox(height: 5.h),
+        SizedBox(height: 8.h),
         Observer(
           builder: (_) {
             final status = iptvStore.epgStatus.value;
-            final Color statusColor;
-            final IconData statusIcon;
             final String statusText;
+            final Widget statusIndicator;
             switch (status) {
               case EpgLoadStatus.loading:
-                statusColor = Colors.white;
-                statusIcon = Icons.sync_rounded;
-                statusText = 'Телепрограмма загружается…';
+                statusText = 'Загрузка телепрограммы…';
+                statusIndicator = SizedBox(
+                  width: 17.w,
+                  height: 17.w,
+                  child: const CircularProgressIndicator(
+                    strokeWidth: 2.2,
+                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                  ),
+                );
                 break;
               case EpgLoadStatus.loaded:
-                statusColor = Colors.white;
-                statusIcon = Icons.check_circle_outline_rounded;
                 statusText = 'Телепрограмма загружена';
+                statusIndicator = Icon(
+                  Icons.check_circle_rounded,
+                  color: Colors.white,
+                  size: 19.sp,
+                );
                 break;
               case EpgLoadStatus.failed:
-                statusColor = Colors.white;
-                statusIcon = Icons.error_outline_rounded;
-                statusText = 'Не удалось загрузить телепрограмму';
+                statusText = 'Ошибка загрузки телепрограммы';
+                statusIndicator = Icon(
+                  Icons.error_outline_rounded,
+                  color: Colors.white,
+                  size: 19.sp,
+                );
                 break;
               case EpgLoadStatus.disabled:
-                statusColor = Colors.white;
-                statusIcon = Icons.info_outline_rounded;
                 statusText = 'Телепрограмма отключена';
+                statusIndicator = Icon(
+                  Icons.info_outline_rounded,
+                  color: Colors.white,
+                  size: 19.sp,
+                );
                 break;
               case EpgLoadStatus.idle:
-                statusColor = Colors.white;
-                statusIcon = Icons.hourglass_empty_rounded;
-                statusText = 'Телепрограмма ожидает загрузки';
+                statusText = 'Ожидание загрузки телепрограммы';
+                statusIndicator = Icon(
+                  Icons.hourglass_empty_rounded,
+                  color: Colors.white,
+                  size: 19.sp,
+                );
                 break;
             }
-            return Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(statusIcon, color: statusColor, size: 18.sp),
-                SizedBox(width: 7.w),
-                Text(
-                  statusText,
-                  style: AppTheme.text(statusColor, 18.sp),
-                ),
-              ],
+            return Container(
+              padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 7.h),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.10),
+                borderRadius: BorderRadius.circular(10.r),
+                border: Border.all(color: Colors.white.withOpacity(0.22)),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  statusIndicator,
+                  SizedBox(width: 9.w),
+                  Text(
+                    statusText,
+                    style: AppTheme.text(Colors.white, 18.sp, weight: FontWeight.w600),
+                  ),
+                ],
+              ),
             );
           },
         ),
