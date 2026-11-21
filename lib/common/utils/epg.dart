@@ -166,47 +166,71 @@ List<Epg> _parseEpgInIsolate(List<dynamic> message) {
   final xml = message[0] as String;
   final filteredChannels = message[1] as List<String>;
 
-  int parseTime(String? time) {
-    if (time == null || time.length < 14) return 0;
-    return DateTime(
-      int.parse(time.substring(0, 4)),
-      int.parse(time.substring(4, 6)),
-      int.parse(time.substring(6, 8)),
-      int.parse(time.substring(8, 10)),
-      int.parse(time.substring(10, 12)),
-      int.parse(time.substring(12, 14)),
-    ).millisecondsSinceEpoch;
+  int parseTime(String? value) {
+    if (value == null) return 0;
+    // XMLTV: yyyyMMddHHmmss +0300 (или без смещения).
+    final match = RegExp(r'^(\\d{4})(\\d{2})(\\d{2})(\\d{2})(\\d{2})(\\d{2})\\s*([+-])(\\d{2})(\\d{2})?')
+        .firstMatch(value.trim());
+    if (match == null) return 0;
+    final date = DateTime.utc(
+      int.parse(match.group(1)!),
+      int.parse(match.group(2)!),
+      int.parse(match.group(3)!),
+      int.parse(match.group(4)!),
+      int.parse(match.group(5)!),
+      int.parse(match.group(6)!),
+    );
+    final sign = match.group(7) == '-' ? -1 : 1;
+    final offsetHours = int.parse(match.group(8)!);
+    final offsetMinutes = int.parse(match.group(9) ?? '0');
+    final offset = Duration(hours: offsetHours, minutes: offsetMinutes) * sign;
+    return date.subtract(offset).millisecondsSinceEpoch;
   }
 
   final doc = XmlDocument.parse(xml);
-  final tvEl = doc.getElement('tv');
+  final tv = doc.getElement('tv');
+  if (tv == null) return [];
 
-  // 转 Set 再过滤：EPG 里的 <programme> 通常是几万到几十万量级，
-  // 用 List.contains 会让整次解析退化成 O(n·m)。
-  final channelSet = filteredChannels.toSet();
-
+  final channelKeys = filteredChannels
+      .map((value) => value.trim().toLowerCase())
+      .where((value) => value.isNotEmpty)
+      .toSet();
   final epgMap = <String, Epg>{};
-  tvEl?.childElements.forEach((el) {
-    final id = el.getAttribute('id');
+  final displayNameToId = <String, String>{};
 
-    if (id != null) {
-      final channelName = el.getElement('display-name')?.innerText ?? '';
-
-      if (channelSet.contains(channelName)) {
-        epgMap[id] = Epg(channel: channelName, programmes: []);
-      }
-    } else {
-      final channel = el.getAttribute('channel');
-
-      if (epgMap.containsKey(channel)) {
-        final start = parseTime(el.getAttribute('start'));
-        final stop = parseTime(el.getAttribute('stop'));
-        final title = el.getElement('title')?.innerText ?? '';
-
-        epgMap[channel]!.programmes.add(EpgProgramme(start: start, stop: stop, title: title));
-      }
+  // Сначала читаем описание каналов и сопоставляем tvg-id с XMLTV id.
+  for (final element in tv.findElements('channel')) {
+    final id = element.getAttribute('id')?.trim();
+    if (id == null || id.isEmpty) continue;
+    final names = element.findElements('display-name')
+        .map((node) => node.innerText.trim())
+        .where((name) => name.isNotEmpty)
+        .toList();
+    final matched = channelKeys.contains(id.toLowerCase()) ||
+        names.any((name) => channelKeys.contains(name.toLowerCase()));
+    if (!matched) continue;
+    epgMap[id] = Epg(channel: id, programmes: []);
+    for (final name in names) {
+      displayNameToId[name.toLowerCase()] = id;
     }
-  });
+  }
 
-  return epgMap.values.toList();
+  // Затем добавляем передачи. В отличие от старого парсера, не зависим
+  // от порядка элементов в XML и используем именно XMLTV channel id.
+  for (final element in tv.findElements('programme')) {
+    final channelId = element.getAttribute('channel')?.trim();
+    if (channelId == null || !epgMap.containsKey(channelId)) continue;
+    final start = parseTime(element.getAttribute('start'));
+    final stop = parseTime(element.getAttribute('stop'));
+    final title = element.getElement('title')?.innerText.trim() ?? '';
+    if (start == 0 || stop <= start || title.isEmpty) continue;
+    epgMap[channelId]!.programmes.add(
+      EpgProgramme(start: start, stop: stop, title: title),
+    );
+  }
+
+  for (final epg in epgMap.values) {
+    epg.programmes.sort((a, b) => a.start.compareTo(b.start));
+  }
+  return epgMap.values.where((epg) => epg.programmes.isNotEmpty).toList();
 }
