@@ -40,7 +40,7 @@ apply from: "$flutterRoot/packages/flutter_tools/gradle/flutter.gradle"
 apply plugin: 'kotlin-android'
 
 android {
-    namespace 'com.htwmedia.htv'
+    namespace 'com.arnix.iptv'
     compileSdk flutter.compileSdkVersion
 
     compileOptions {
@@ -57,7 +57,7 @@ android {
     }
 
     defaultConfig {
-        applicationId "com.htwmedia.htv"
+        applicationId "com.arnix.iptv"
         minSdkVersion flutter.minSdkVersion
         targetSdkVersion 29
         versionCode flutterVersionCode.toInteger()
@@ -109,7 +109,7 @@ android {
     }
     applicationVariants.all { variant ->
         variant.outputs.all { output ->
-            def apkName = "ARNIX-TV-${variant.versionName}"
+            def apkName = "ARNIX-IPTV-${variant.versionName}"
             outputFileName = new File(apkName + ".apk")
         }
     }
