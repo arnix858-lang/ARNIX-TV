@@ -15,7 +15,12 @@ class EpgUtil {
   /// 获取远程epg xml
   static Future<String> _fetchXml() async {
     _logger.debug('获取远程xml: ${Constants.iptvEpgXml}');
-    final result = await RequestUtil.get(Constants.iptvEpgXml);
+    var result = await RequestUtil.get(Constants.iptvEpgXml, timeout: const Duration(minutes: 2));
+    // Совместимый резервный XMLTV URL iptvx.one на случай, если короткий адрес /EPG недоступен.
+    if (result.isEmpty) {
+      _logger.warning('Основной EPG URL недоступен, пробуем резервный XMLTV');
+      result = await RequestUtil.get('https://iptvx.one/epg/epg.xml.gz', timeout: const Duration(minutes: 2));
+    }
     return result;
   }
 
@@ -44,7 +49,7 @@ class EpgUtil {
     final now = DateTime.now();
     final cacheAt = DateTime.fromMillisecondsSinceEpoch(IptvSettings.epgXmlCacheTime);
 
-    final isCacheValid = now.year == cacheAt.year && now.month == cacheAt.month && now.day == cacheAt.day;
+    final isCacheValid = now.year == cacheAt.year && now.month == cacheAt.month && now.day == cacheAt.day && IptvSettings.epgXmlCacheSource == Constants.iptvEpgXml;
 
     if (isCacheValid) {
       final cache = await _getCacheXml();
@@ -70,6 +75,7 @@ class EpgUtil {
       final cacheFile = await _getCacheXmlFile();
       await cacheFile.writeAsString(xml);
       IptvSettings.epgXmlCacheTime = now.millisecondsSinceEpoch;
+      IptvSettings.epgXmlCacheSource = Constants.iptvEpgXml;
       IptvSettings.epgCacheHash = 0;
       return xml;
     }
@@ -127,7 +133,7 @@ class EpgUtil {
     if (!IptvSettings.epgEnable) return null;
     if (filteredChannels.isEmpty) return null;
 
-    final hashcode = filteredChannels.map((str) => str.hashCode).reduce((value, element) => value ^ element);
+    final hashcode = filteredChannels.map((str) => str.hashCode).fold(Constants.iptvEpgXml.hashCode, (value, element) => value ^ element);
     if (IptvSettings.epgCacheHash == hashcode) {
       return await _getCache();
     }
