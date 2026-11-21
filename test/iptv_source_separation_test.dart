@@ -21,6 +21,11 @@ void main() {
       expect(IptvSettings.defaultIptvSourceApi, isEmpty);
     });
 
+    test('首次启动不预填任何用户播放列表', () {
+      IptvSettings.customIptvSource = '';
+      expect(IptvSettings.customIptvSource, isEmpty);
+    });
+
     test('改成第三方接口后读回新值', () async {
       IptvSettings.defaultIptvSourceApi = 'https://example.com/api/iptv';
       expect(IptvSettings.defaultIptvSourceApi, 'https://example.com/api/iptv');
