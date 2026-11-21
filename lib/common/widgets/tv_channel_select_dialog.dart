@@ -243,14 +243,14 @@ class _ChannelSelectDialogState extends State<ChannelSelectDialog>
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            '选择频道',
+            'Выбор каналов',
             style: AppTheme.text(fg, 36.sp),
           ),
           SizedBox(height: 16.h),
           TvDialogField(
             controller: _searchController,
             focusNode: _searchFocusNode,
-            hint: '搜索频道...',
+            hint: 'Поиск каналов…',
             // 非编辑态下，高亮是否落在搜索区
             active: tvEditing || _area == areaSearch,
             verticalPadding: 6,
@@ -267,7 +267,7 @@ class _ChannelSelectDialogState extends State<ChannelSelectDialog>
           Row(
             children: [
               TvDialogChip(
-                label: '全选',
+                label: 'Выбрать все',
                 highlighted: _area == areaAction && _actionIndex == 0,
                 onTap: () => setState(() {
                   _area = areaAction;
@@ -277,7 +277,7 @@ class _ChannelSelectDialogState extends State<ChannelSelectDialog>
               ),
               SizedBox(width: 16.w),
               TvDialogChip(
-                label: '取消全选',
+                label: 'Снять выделение',
                 highlighted: _area == areaAction && _actionIndex == 1,
                 onTap: () => setState(() {
                   _area = areaAction;
@@ -287,7 +287,7 @@ class _ChannelSelectDialogState extends State<ChannelSelectDialog>
               ),
               const Spacer(),
               Text(
-                '已选 ${_selected.length}',
+                'Выбрано: ${_selected.length}',
                 style: AppTheme.text(AppTheme.fgFaded(context, AppTheme.oTertiary), 22.sp),
               ),
             ],
@@ -299,13 +299,13 @@ class _ChannelSelectDialogState extends State<ChannelSelectDialog>
             mainAxisAlignment: MainAxisAlignment.end,
             children: [
               TvDialogChip(
-                label: '取消',
+                label: 'Отмена',
                 highlighted: _area == areaBottom && _bottomIndex == 0,
                 onTap: () => Navigator.pop(context),
               ),
               SizedBox(width: 16.w),
               TvDialogChip(
-                label: '保存 (${_selected.length})',
+                label: 'Сохранить (${_selected.length})',
                 highlighted: _area == areaBottom && _bottomIndex == 1,
                 onTap: () => Navigator.pop(context, _selected),
               ),
@@ -320,7 +320,7 @@ class _ChannelSelectDialogState extends State<ChannelSelectDialog>
     if (channels.isEmpty) {
       return Center(
         child: Text(
-          '无匹配频道',
+          'Каналы не найдены',
           style: AppTheme.text(AppTheme.fgFaded(context, AppTheme.oTertiary), 26.sp),
         ),
       );
