@@ -69,7 +69,7 @@ class _SettingsMainState extends State<SettingsMain> {
     );
   }
 
-  /// 电视端文本编辑弹窗
+  /// Диалог редактирования текста для Android TV.
   ///
   /// Flutter 的按键分发顺序是「叶子节点 → 根」(focus_manager.dart:1995)，
   /// 而 EditableText 在最内层就把上下方向键映射成了光标移动
@@ -151,14 +151,14 @@ class _SettingsMainState extends State<SettingsMain> {
     );
   }
 
-  /// Сервис источников地址
+  /// Настройка сервиса источников
   ///
   /// 壳源分离的关键入口：把写死的服务端地址变成可配置项。
   /// 留空 = 停用内置源，App 退化为纯播放器，只加载用户自己的订阅。
   void _showDefaultApiDialog() {
     _showTvTextEditDialog(
       title: 'Сервис источников',
-      subtitle: '留空表示停用内置源，届时只加载「Пользовательский плейлист」里填写的订阅',
+      subtitle: 'Оставьте поле пустым, чтобы отключить встроенный источник и загружать только пользовательский плейлист.',
       hint: 'Введите адрес API',
       initialValue: IptvSettings.defaultIptvSourceApi,
       maxWidth: 700,
@@ -181,7 +181,7 @@ class _SettingsMainState extends State<SettingsMain> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
-                '扫描QR-код设置',
+                'Отсканируйте QR-код для настройки',
                 style: AppTheme.text(fg, 36.sp),
               ),
               SizedBox(height: 12.h),
@@ -416,14 +416,14 @@ class _SettingsMainState extends State<SettingsMain> {
           },
         ),
         SettingItem(
-          title: 'Источники каналов精简',
+          title: 'Фильтрация каналов',
           value: () {
             if (!IptvSettings.iptvSourceSimplify) return 'Выключено';
             final count = IptvSettings.allowedChannels.length;
             return count > 0 ? 'Включено ($count каналов)' : 'Включено';
           },
           description: () {
-            if (!IptvSettings.iptvSourceSimplify) return '显示完整Источники каналов';
+            if (!IptvSettings.iptvSourceSimplify) return 'Показывать все каналы';
             final count = IptvSettings.allowedChannels.length;
             if (count > 0) return 'Показывать только выбранные каналы; нажмите для настройки';
             return 'Показывать сокращённый список (федеральные и региональные каналы)';
@@ -446,7 +446,7 @@ class _SettingsMainState extends State<SettingsMain> {
         ),
         SettingItem(
           title: 'Пользовательский плейлист',
-          value: () => IptvSettings.customIptvSource.isNotEmpty ? '已Включено' : '未Включено',
+          value: () => IptvSettings.customIptvSource.isNotEmpty ? 'Включено' : 'Выключено',
           description: () {
             if (IptvSettings.customIptvSource.isEmpty) return 'Нажмите, чтобы указать ссылку на плейлист';
             final src = IptvSettings.customIptvSource;
@@ -461,7 +461,7 @@ class _SettingsMainState extends State<SettingsMain> {
           },
         ),
         SettingItem(
-          title: 'Источники каналов缓存',
+          title: 'Кэш списка каналов',
           value: () => _formatDuration(IptvSettings.iptvSourceCacheKeepTime),
           description: () => IptvSettings.iptvSourceCacheTime > 0 ? "Кэш сохранён (нажмите, чтобы очистить)" : "Кэш отсутствует",
           onTap: () {
@@ -483,8 +483,8 @@ class _SettingsMainState extends State<SettingsMain> {
           },
         ),
         SettingItem(
-          title: '自定义Телепрограмма',
-          value: () => IptvSettings.customEpgXml.isNotEmpty ? '已Включено' : '未Включено',
+          title: 'Пользовательская телепрограмма (EPG)',
+          value: () => IptvSettings.customEpgXml.isNotEmpty ? 'Включено' : 'Выключено',
           description: () => IptvSettings.customEpgXml.isNotEmpty ? 'Удерживайте, чтобы восстановить настройки по умолчанию' : 'Нажмите, чтобы показать QR-код адреса',
           onTap: () => _showServerQrcode(),
           onLongTap: () {
@@ -495,7 +495,7 @@ class _SettingsMainState extends State<SettingsMain> {
           },
         ),
         SettingItem(
-          title: 'Телепрограмма缓存',
+          title: 'Кэш телепрограммы',
           value: () => 'Сегодня',
           description: () => IptvSettings.epgXmlCacheTime > 0 ? "Кэш сохранён (нажмите, чтобы очистить)" : "Кэш отсутствует",
           onTap: () {
@@ -545,7 +545,7 @@ class _SettingsMainState extends State<SettingsMain> {
       ]),
       SettingGroup(name: 'Дополнительно', items: [
         SettingItem(
-          title: 'Дополнительно设置',
+          title: 'Дополнительные настройки',
           value: () => '',
           description: () => 'Откройте адрес для настройки: ${HttpServerUtil.serverUrl}',
           onTap: () => _showServerQrcode(),
@@ -565,7 +565,7 @@ class _SettingsMainState extends State<SettingsMain> {
       ));
   }
 
-  /// 拉取播放列表正文（原始字节），用于回看与直播逐字节比对
+  /// Получение исходного содержимого плейлиста для проверки архива.
   Future<({int status, List<int> bytes})> _fetchPlaylist(String url) async {
     HttpClient? client;
     try {
@@ -608,7 +608,7 @@ class _SettingsMainState extends State<SettingsMain> {
     return 'Обычный поток без поддержки архива на стороне сервера';
   }
 
-  /// 回看能力探测
+  /// Проверка поддержки архива.
   ///
   /// 先确认源是否声明了 catchup，再用最近一个已播完的节目拼地址。
   /// 关键一步是**与直播地址逐字节比对**：很多服务端只是忽略未知参数、
