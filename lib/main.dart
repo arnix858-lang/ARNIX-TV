@@ -134,12 +134,13 @@ class MyApp extends StatelessWidget {
       splitScreenMode: true,
       child: RestartWidget(
           child: MaterialApp(
-            title: 'ARNIX TV',
+            title: 'ARNIX IPTV',
             theme: ThemeData(
               colorScheme: colorScheme,
             ),
             localizationsDelegates: const [...GlobalMaterialLocalizations.delegates, GlobalWidgetsLocalizations.delegate],
-            supportedLocales: const [Locale("ru", "RU"), Locale("en", "US")],
+            locale: const Locale("ru", "RU"),
+            supportedLocales: const [Locale("ru", "RU")],
             home: const DelayRenderer(
               child: DoubleBackExit(
                 child: IptvPage(),
