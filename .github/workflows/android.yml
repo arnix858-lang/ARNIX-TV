@@ -1,4 +1,4 @@
-name: ARNIX TV Android Build
+name: ARNIX IPTV Android Build
 
 on:
   push:
@@ -31,6 +31,6 @@ jobs:
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: ARNIX-TV-APK
+          name: ARNIX-IPTV-APK
           path: build/app/outputs/flutter-apk/*.apk
           if-no-files-found: error
