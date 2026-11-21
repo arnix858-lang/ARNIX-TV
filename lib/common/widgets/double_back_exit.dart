@@ -45,7 +45,7 @@ class DoubleBackExitState extends State<DoubleBackExit> {
           ScaffoldMessenger.of(context).clearSnackBars();
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('再按一次退出'),
+              content: Text('Нажмите ещё раз, чтобы выйти'),
               duration: Duration(seconds: 1),
             ),
           );
