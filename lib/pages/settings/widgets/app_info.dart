@@ -73,9 +73,16 @@ class _SettingsAppInfoState extends State<SettingsAppInfo> {
                 // 遥控器用户看不出焦点在哪儿，给一个明确的描边
                 border: focused ? Border.all(color: Colors.white, width: 3.w) : null,
               ),
-              child: Text(
-                'Скачать обновление',
-                style: AppTheme.text(Colors.white, 24.sp),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.download_rounded, color: Colors.white, size: 22.sp),
+                  SizedBox(width: 8.w),
+                  Text(
+                    'Скачать обновление',
+                    style: AppTheme.text(Colors.white, 22.sp, weight: FontWeight.w600),
+                  ),
+                ],
               ),
             );
           },
