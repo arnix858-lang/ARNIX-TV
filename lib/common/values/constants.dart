@@ -3,9 +3,6 @@ class Constants {
   /// 默认源服务地址
   static const defaultIptvSourceApi = '';
 
-  /// Плейлист ARNIX TV по умолчанию
-  static const defaultPlaylistUrl = 'http://cdntv.online/hls/9n3hebsjat/mpeg.m3u';
-
   /// 直播源缓存时间
   static const iptvSourceCacheKeepTime = 1000 * 60 * 60;
 
