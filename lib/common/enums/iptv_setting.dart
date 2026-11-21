@@ -38,6 +38,9 @@ enum IptvSetting {
   /// epg缓存时间
   epgXmlCacheTime,
 
+  /// URL источника, из которого был сохранён XMLTV-кэш
+  epgXmlCacheSource,
+
   /// epg解析缓存hash
   epgCacheHash,
 
@@ -116,6 +119,9 @@ class IptvSettings {
 
   static bool get epgEnable => PrefsUtil.getBool(IptvSetting.epgEnable.toString()) ?? true;
   static set epgEnable(bool value) => PrefsUtil.setBool(IptvSetting.epgEnable.toString(), value);
+
+  static String get epgXmlCacheSource => PrefsUtil.getString(IptvSetting.epgXmlCacheSource.toString()) ?? '';
+  static set epgXmlCacheSource(String value) => PrefsUtil.setString(IptvSetting.epgXmlCacheSource.toString(), value);
 
   static int get epgXmlCacheTime => PrefsUtil.getInt(IptvSetting.epgXmlCacheTime.toString()) ?? 0;
   static set epgXmlCacheTime(int value) => PrefsUtil.setInt(IptvSetting.epgXmlCacheTime.toString(), value);
