@@ -54,6 +54,7 @@ void main() {
       expect(cctv.list[0].name, 'CCTV-1');
       expect(cctv.list[0].url, 'http://a/1.m3u8');
       expect(cctv.list[0].tvgName, 'CCTV1');
+      expect(cctv.list[0].logoUrl, 'http://l/1.png');
 
       final weishi = groups.firstWhere((g) => g.name == '卫视频道');
       expect(weishi.list.single.name, '湖南卫视');
