@@ -202,7 +202,6 @@ List<Epg> _parseEpgInIsolate(List<dynamic> message) {
       .where((value) => value.isNotEmpty)
       .toSet();
   final epgMap = <String, Epg>{};
-  final displayNameToId = <String, String>{};
 
   // Сначала читаем описание каналов и сопоставляем tvg-id с XMLTV id.
   for (final element in tv.findElements('channel')) {
@@ -216,9 +215,6 @@ List<Epg> _parseEpgInIsolate(List<dynamic> message) {
         names.any((name) => channelKeys.contains(name.toLowerCase()));
     if (!matched) continue;
     epgMap[id] = Epg(channel: id, programmes: []);
-    for (final name in names) {
-      displayNameToId[name.toLowerCase()] = id;
-    }
   }
 
   // Затем добавляем передачи. В отличие от старого парсера, не зависим
