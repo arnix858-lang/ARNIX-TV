@@ -576,26 +576,11 @@ class _IptvPageState extends State<IptvPage> with WidgetsBindingObserver {
                     ),
                     if (empty) ...[
                       SizedBox(height: 24.h),
-                      FilledButton.icon(
+                      ElevatedButton.icon(
                         autofocus: true,
                         onPressed: _openSettings,
-                        icon: const Icon(Icons.add_link_rounded, size: 22),
+                        icon: const Icon(Icons.add_link_rounded, color: Colors.white),
                         label: const Text('Добавить плейлист'),
-                        style: FilledButton.styleFrom(
-                          backgroundColor: Theme.of(context).colorScheme.primary,
-                          foregroundColor: Theme.of(context).colorScheme.onPrimary,
-                          disabledBackgroundColor: AppTheme.unselectedTileFill,
-                          padding: EdgeInsets.symmetric(horizontal: 30.w, vertical: 18.h),
-                          minimumSize: Size(0, 58.h),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(18.r),
-                          ),
-                          textStyle: AppTheme.text(
-                            Theme.of(context).colorScheme.onPrimary,
-                            24.sp,
-                            weight: FontWeight.w600,
-                          ),
-                        ),
                       ),
                     ],
                     if (failed) ...[
