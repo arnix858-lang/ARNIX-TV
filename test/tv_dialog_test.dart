@@ -58,8 +58,8 @@ void main() {
 
     expect(find.text('用户参数'), findsOneWidget);
     expect(find.text('old-value'), findsOneWidget);
-    expect(find.text('取消'), findsOneWidget);
-    expect(find.text('保存'), findsOneWidget);
+    expect(find.text('Отмена'), findsOneWidget);
+    expect(find.text('Сохранить'), findsOneWidget);
 
     // 焦点环：输入框 → 取消。取消不该触发 onSave
     await _pressKey(tester, LogicalKeyboardKey.arrowDown);
@@ -189,7 +189,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Выбрано: 3'), findsOneWidget);
 
-    await tester.tap(find.textContaining('保存'));
+    await tester.tap(find.textContaining('Сохранить'));
     await tester.pumpAndSettle();
 
     expect(result, {'CCTV-1', 'CCTV-2', '湖南卫视'});
