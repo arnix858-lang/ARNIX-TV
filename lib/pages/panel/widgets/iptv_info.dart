@@ -61,6 +61,53 @@ class PanelIptvInfo extends StatelessWidget {
             style: AppTheme.text(programmeColor, 30.sp),
           ),
         ),
+        SizedBox(height: 5.h),
+        Observer(
+          builder: (_) {
+            final status = iptvStore.epgStatus.value;
+            final Color statusColor;
+            final IconData statusIcon;
+            final String statusText;
+            switch (status) {
+              case EpgLoadStatus.loading:
+                statusColor = Colors.white;
+                statusIcon = Icons.sync_rounded;
+                statusText = 'Телепрограмма загружается…';
+                break;
+              case EpgLoadStatus.loaded:
+                statusColor = Colors.white;
+                statusIcon = Icons.check_circle_outline_rounded;
+                statusText = 'Телепрограмма загружена';
+                break;
+              case EpgLoadStatus.failed:
+                statusColor = Colors.white;
+                statusIcon = Icons.error_outline_rounded;
+                statusText = 'Не удалось загрузить телепрограмму';
+                break;
+              case EpgLoadStatus.disabled:
+                statusColor = Colors.white;
+                statusIcon = Icons.info_outline_rounded;
+                statusText = 'Телепрограмма отключена';
+                break;
+              case EpgLoadStatus.idle:
+                statusColor = Colors.white;
+                statusIcon = Icons.hourglass_empty_rounded;
+                statusText = 'Телепрограмма ожидает загрузки';
+                break;
+            }
+            return Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(statusIcon, color: statusColor, size: 18.sp),
+                SizedBox(width: 7.w),
+                Text(
+                  statusText,
+                  style: AppTheme.text(statusColor, 18.sp),
+                ),
+              ],
+            );
+          },
+        ),
       ],
     );
   }
