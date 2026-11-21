@@ -97,7 +97,7 @@ class _SettingsAppInfoState extends State<SettingsAppInfo> {
             textBaseline: TextBaseline.alphabetic,
             children: [
               Text(
-                'ARNIX TV',
+                'ARNIX IPTV',
                 style: AppTheme.text(fg, 60.sp, weight: FontWeight.bold),
               ),
               SizedBox(width: 20.w),
