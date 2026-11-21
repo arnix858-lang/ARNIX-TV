@@ -386,7 +386,7 @@ class IptvUtil {
       )).toList();
       builtinGroups.add(IptvGroup(
         idx: newIdx,
-        name: '${group.name}(自定义)',
+        name: '${group.name} (пользовательские)',
         list: newList,
       ));
     }
