@@ -83,7 +83,7 @@ class IptvSettings {
 
   static String get customIptvSource {
     final saved = PrefsUtil.getString(IptvSetting.customIptvSource.toString());
-    return (saved == null || saved.trim().isEmpty) ? Constants.defaultPlaylistUrl : saved;
+    return saved ?? '';
   }
   static set customIptvSource(String value) {
     PrefsUtil.setString(IptvSetting.customIptvSource.toString(), value);
