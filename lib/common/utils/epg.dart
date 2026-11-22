@@ -51,51 +51,6 @@ class EpgUtil {
     }
   }
 
-  /// 刷新并获取epg xml
-  static Future<String> _refreshAndGetXml() async {
-    final now = DateTime.now();
-    final cacheAt = DateTime.fromMillisecondsSinceEpoch(IptvSettings.epgXmlCacheTime);
-
-    final isCacheValid = now.year == cacheAt.year && now.month == cacheAt.month && now.day == cacheAt.day && IptvSettings.epgXmlCacheSource == Constants.iptvEpgXml;
-
-    if (isCacheValid) {
-      final cache = await _getCacheXml();
-      if (cache != null && cache.isNotEmpty) {
-        _logger.debug('使用缓存xml');
-        return cache;
-      }
-    }
-
-    // 1点前，远程epg可能未更新，优先用旧缓存
-    if (now.hour < 1) {
-      final oldCache = await _getCacheXml();
-      if (oldCache != null && oldCache.isNotEmpty) {
-        _logger.debug('未到1点，使用旧缓存xml');
-        return oldCache;
-      }
-      _logger.debug('未到1点且无旧缓存，尝试远程获取');
-    }
-
-    final xml = await _fetchXml();
-
-    if (xml.isNotEmpty) {
-      final cacheFile = await _getCacheXmlFile();
-      await cacheFile.writeAsString(xml);
-      IptvSettings.epgXmlCacheTime = now.millisecondsSinceEpoch;
-      IptvSettings.epgXmlCacheSource = Constants.iptvEpgXml;
-      IptvSettings.epgCacheHash = 0;
-      return xml;
-    }
-
-    // 远程获取失败，用旧缓存兜底
-    final oldCache = await _getCacheXml();
-    if (oldCache != null && oldCache.isNotEmpty) {
-      _logger.debug('远程获取失败，使用旧缓存');
-      return oldCache;
-    }
-
-    return '';
-  }
 
   /// 解析epg
   static Future<List<Epg>> _parseFromXml(String xml, List<String> filteredChannels) async {
