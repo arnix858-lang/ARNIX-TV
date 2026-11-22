@@ -163,7 +163,7 @@ List<Epg> _parseEpgInIsolate(List<dynamic> message) {
   int parseTime(String? value) {
     if (value == null) return 0;
     // XMLTV: yyyyMMddHHmmss +0300 (или без смещения).
-    final match = RegExp(r'^(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})\s*([+-])(\d{2})(\d{2})?').firstMatch(value.trim());
+    final match = RegExp(r'^(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})(?:\s*([+-])(\d{2})(\d{2})?)?').firstMatch(value.trim());
     if (match == null) return 0;
     final date = DateTime.utc(
       int.parse(match.group(1)!),
@@ -174,8 +174,8 @@ List<Epg> _parseEpgInIsolate(List<dynamic> message) {
       int.parse(match.group(6)!),
     );
     final sign = match.group(7) == '-' ? -1 : 1;
-    final offsetHours = int.parse(match.group(8)!);
-    final offsetMinutes = int.parse(match.group(9) ?? '0');
+    final offsetHours = int.tryParse(match.group(8) ?? '0') ?? 0;
+    final offsetMinutes = int.tryParse(match.group(9) ?? '0') ?? 0;
     final offset = Duration(hours: offsetHours, minutes: offsetMinutes) * sign;
     return date.subtract(offset).millisecondsSinceEpoch;
   }
