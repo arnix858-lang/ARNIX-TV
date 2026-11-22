@@ -30,7 +30,14 @@ class EpgUtil {
         }
       }
     }
-    if (!urls.contains(Constants.iptvEpgXml)) urls.add(Constants.iptvEpgXml);
+    // Основной IPTVX XML и резервные варианты на случай недоступности одного URL.
+    for (final fallback in [
+      Constants.iptvEpgXml,
+      Constants.iptvEpgXmlGzip,
+      Constants.iptvEpgXmlLite,
+    ]) {
+      if (!urls.contains(fallback)) urls.add(fallback);
+    }
     return urls;
   }
 
