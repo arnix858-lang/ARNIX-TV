@@ -6,10 +6,16 @@ class Constants {
   /// 直播源缓存时间
   static const iptvSourceCacheKeepTime = 1000 * 60 * 60;
 
-  /// epg xml
-  static const iptvEpgXml = 'https://iptvx.one/epg/epg.xml.gz';
+  /// Основной XMLTV источник IPTVX (обычный XML).
+  static const iptvEpgXml = 'https://iptvx.one/EPG';
 
-  /// epg 刷新时间阈值（小时）
+  /// Резервный сжатый XMLTV источник IPTVX.
+  static const iptvEpgXmlGzip = 'https://iptvx.one/epg/epg.xml.gz';
+
+  /// Облегчённый резервный XMLTV источник IPTVX.
+  static const iptvEpgXmlLite = 'https://iptvx.one/EPG_LITE';
+
+  /// epg刷新时间阈值（小时）
   static const epgRefreshTimeThreshold = 6;
 
   /// github API 获取最新 release
