@@ -20,8 +20,16 @@ class EpgUtil {
 
   static List<String> _sourceUrls() {
     final urls = <String>[];
+    // В заголовке M3U может быть несколько XMLTV-ссылок через точку с запятой.
     final playlistUrl = IptvSettings.customEpgXml.trim();
-    if (playlistUrl.isNotEmpty) urls.add(playlistUrl);
+    if (playlistUrl.isNotEmpty) {
+      for (final value in playlistUrl.split(';')) {
+        final url = value.trim();
+        if (url.startsWith('http://') || url.startsWith('https://')) {
+          if (!urls.contains(url)) urls.add(url);
+        }
+      }
+    }
     if (!urls.contains(Constants.iptvEpgXml)) urls.add(Constants.iptvEpgXml);
     return urls;
   }
@@ -189,8 +197,10 @@ List<Epg> _parseEpgInIsolate(List<dynamic> message) {
       .where((value) => value.isNotEmpty)
       .toSet();
   final epgMap = <String, Epg>{};
+  final aliasesById = <String, Set<String>>{};
 
-  // Сначала читаем описание каналов и сопоставляем tvg-id с XMLTV id.
+  // Сначала читаем описание каналов и связываем XMLTV id со всеми
+  // совпавшими tvg-id / tvg-name / названиями из M3U.
   for (final element in tv.findElements('channel')) {
     final id = element.getAttribute('id')?.trim();
     if (id == null || id.isEmpty) continue;
@@ -198,14 +208,16 @@ List<Epg> _parseEpgInIsolate(List<dynamic> message) {
         .map((node) => node.innerText.trim())
         .where((name) => name.isNotEmpty)
         .toList();
-    final matched = channelKeys.contains(id.toLowerCase()) ||
-        names.any((name) => channelKeys.contains(name.toLowerCase()));
+    final matchedNames = names
+        .where((name) => channelKeys.contains(name.toLowerCase()))
+        .toSet();
+    final matched = channelKeys.contains(id.toLowerCase()) || matchedNames.isNotEmpty;
     if (!matched) continue;
+    aliasesById[id] = <String>{id, ...matchedNames};
     epgMap[id] = Epg(channel: id, programmes: []);
   }
 
-  // Затем добавляем передачи. В отличие от старого парсера, не зависим
-  // от порядка элементов в XML и используем именно XMLTV channel id.
+  // Затем добавляем передачи по XMLTV id.
   for (final element in tv.findElements('programme')) {
     final channelId = element.getAttribute('channel')?.trim();
     if (channelId == null || !epgMap.containsKey(channelId)) continue;
@@ -218,8 +230,17 @@ List<Epg> _parseEpgInIsolate(List<dynamic> message) {
     );
   }
 
-  for (final epg in epgMap.values) {
-    epg.programmes.sort((a, b) => a.start.compareTo(b.start));
+  // Индекс хранилища ищет по tvg-id и имени канала. Если display-name
+  // совпал, создаём алиас с тем же списком передач, иначе расписание
+  // загружалось, но интерфейс показывал «Нет программы».
+  final result = <Epg>[];
+  for (final entry in epgMap.entries) {
+    final programmes = entry.value.programmes
+      ..sort((a, b) => a.start.compareTo(b.start));
+    if (programmes.isEmpty) continue;
+    for (final alias in aliasesById[entry.key] ?? <String>{entry.key}) {
+      result.add(Epg(channel: alias, programmes: programmes));
+    }
   }
-  return epgMap.values.where((epg) => epg.programmes.isNotEmpty).toList();
+  return result;
 }
