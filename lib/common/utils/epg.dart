@@ -13,15 +13,22 @@ class EpgUtil {
   EpgUtil._();
 
   /// 获取远程epg xml
-  static Future<String> _fetchXml() async {
-    _logger.debug('获取远程xml: ${Constants.iptvEpgXml}');
-    var result = await RequestUtil.get(Constants.iptvEpgXml, timeout: const Duration(minutes: 2));
-    // Совместимый резервный XMLTV URL iptvx.one на случай, если короткий адрес /EPG недоступен.
-    if (result.isEmpty) {
-      _logger.warning('Основной EPG URL недоступен, пробуем резервный XMLTV');
-      result = await RequestUtil.get('https://iptvx.one/epg/epg.xml.gz', timeout: const Duration(minutes: 2));
-    }
-    return result;
+  static Future<String> _fetchXml(String url) async {
+    _logger.debug('Загрузка XMLTV: $url');
+    return RequestUtil.get(url, timeout: const Duration(minutes: 2));
+  }
+
+  static List<String> _sourceUrls() {
+    final urls = <String>[];
+    final playlistUrl = IptvSettings.customEpgXml.trim();
+    if (playlistUrl.isNotEmpty) urls.add(playlistUrl);
+    if (!urls.contains(Constants.iptvEpgXml)) urls.add(Constants.iptvEpgXml);
+    return urls;
+  }
+
+  static int _cacheHash(List<String> channels) {
+    final values = <String>[...channels, ..._sourceUrls()];
+    return values.map((value) => value.hashCode).fold(0, (a, b) => a ^ b);
   }
 
   /// 获取缓存epg xml文件
@@ -133,7 +140,7 @@ class EpgUtil {
     if (!IptvSettings.epgEnable) return null;
     if (filteredChannels.isEmpty) return null;
 
-    final hashcode = filteredChannels.map((str) => str.hashCode).fold(Constants.iptvEpgXml.hashCode, (value, element) => value ^ element);
+    final hashcode = _cacheHash(filteredChannels);
     if (IptvSettings.epgCacheHash == hashcode) {
       return await _getCache();
     }
@@ -142,27 +149,53 @@ class EpgUtil {
 
   /// 刷新并获取epg
   static Future<List<Epg>> refreshAndGet(List<String> filteredChannels) async {
-    if (!IptvSettings.epgEnable) return [];
-    if (filteredChannels.isEmpty) return [];
+    if (!IptvSettings.epgEnable || filteredChannels.isEmpty) return [];
 
-    final xml = await _refreshAndGetXml();
-    if (xml.isEmpty) return [];
+    final hashcode = _cacheHash(filteredChannels);
+    final merged = <String, Map<String, EpgProgramme>>{};
+    var successfulSources = 0;
 
-    final hashcode = filteredChannels.map((str) => str.hashCode).reduce((value, element) => value ^ element);
-    if (IptvSettings.epgCacheHash == hashcode) {
-      final cache = await _getCache();
-      if (cache != null) {
-        _logger.debug('使用缓存epg');
-        return cache;
+    // Загружаем EPG из заголовка пользовательского M3U и из встроенного источника.
+    // Данные объединяются по XMLTV channel id, поэтому один источник дополняет другой.
+    for (final url in _sourceUrls()) {
+      try {
+        final xml = await _fetchXml(url);
+        if (xml.isEmpty) {
+          _logger.warning('Источник EPG вернул пустой ответ: $url');
+          continue;
+        }
+        final parsed = await _parseFromXml(xml, filteredChannels);
+        successfulSources++;
+        for (final epg in parsed) {
+          final programmes = merged.putIfAbsent(epg.channel, () => <String, EpgProgramme>{});
+          for (final programme in epg.programmes) {
+            final key = '${programme.start}|${programme.stop}|${programme.title}';
+            programmes[key] = programme;
+          }
+        }
+        _logger.debug('Источник $url: найдено каналов ${parsed.length}');
+      } catch (e, st) {
+        _logger.handle(e, st);
       }
     }
-    
-    final epgList = await _parseFromXml(xml, filteredChannels);
+
+    final epgList = merged.entries.map((entry) {
+      final programmes = entry.value.values.toList()
+        ..sort((a, b) => a.start.compareTo(b.start));
+      return Epg(channel: entry.key, programmes: programmes);
+    }).where((epg) => epg.programmes.isNotEmpty).toList();
+
+    if (epgList.isEmpty && successfulSources == 0) {
+      final cache = await _getCache();
+      if (cache != null && cache.isNotEmpty) return cache;
+      return [];
+    }
 
     final cacheFile = await _getCacheFile();
     await cacheFile.writeAsString(jsonEncode(epgList.map((e) => e.toJson()).toList()));
     IptvSettings.epgCacheHash = hashcode;
-
+    IptvSettings.epgXmlCacheTime = DateTime.now().millisecondsSinceEpoch;
+    IptvSettings.epgXmlCacheSource = _sourceUrls().join('|');
     return epgList;
   }
 }
@@ -175,8 +208,7 @@ List<Epg> _parseEpgInIsolate(List<dynamic> message) {
   int parseTime(String? value) {
     if (value == null) return 0;
     // XMLTV: yyyyMMddHHmmss +0300 (или без смещения).
-    final match = RegExp(r'^(\\d{4})(\\d{2})(\\d{2})(\\d{2})(\\d{2})(\\d{2})\\s*([+-])(\\d{2})(\\d{2})?')
-        .firstMatch(value.trim());
+    final match = RegExp(r'^(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})\s*([+-])(\d{2})(\d{2})?').firstMatch(value.trim());
     if (match == null) return 0;
     final date = DateTime.utc(
       int.parse(match.group(1)!),
