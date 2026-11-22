@@ -7,7 +7,7 @@ class Constants {
   static const iptvSourceCacheKeepTime = 1000 * 60 * 60;
 
   /// epg xml
-  static const iptvEpgXml = 'https://iptvx.one/EPG';
+  static const iptvEpgXml = 'https://iptvx.one/epg/epg.xml.gz';
 
   /// epg 刷新时间阈值（小时）
   static const epgRefreshTimeThreshold = 6;
