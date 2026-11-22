@@ -34,7 +34,7 @@ Future<List<IptvGroup>> parseM3uSource(String source) async {
   try {
     // Парсер также используется в изолированных тестах до инициализации PrefsUtil.
     IptvSettings.customEpgXml = epgMatch?.group(1)?.trim() ?? '';
-  } on LateInitializationError {
+  } catch (_) {
     // В тестовом/раннем контексте настройки ещё не доступны.
   }
 
