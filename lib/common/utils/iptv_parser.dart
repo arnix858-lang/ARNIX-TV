@@ -28,7 +28,7 @@ Future<List<IptvGroup>> parseM3uSource(String source) async {
   // EPG URL может быть объявлен прямо в заголовке M3U.
   // Сохраняем его, чтобы EPG-загрузчик мог объединить его со встроенным источником.
   final epgMatch = RegExp(
-    r'(?:url-tvg|x-tvg-url)\s*=\s*["']([^"']+)["']',
+    r'(?:url-tvg|x-tvg-url)\s*=\s*"([^"]+)"',
     caseSensitive: false,
   ).firstMatch(m3uHead);
   if (epgMatch != null) {
