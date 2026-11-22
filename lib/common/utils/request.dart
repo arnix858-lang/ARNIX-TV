@@ -39,7 +39,13 @@ class RequestUtil {
           client!.get(Uri.parse(url), headers: _headers).timeout(timeout));
 
       if (response.statusCode == 200) {
-        return utf8.decode(response.bodyBytes);
+        final bytes = response.bodyBytes;
+        // Некоторые XMLTV-серверы отдают .gz как файл (без HTTP Content-Encoding).
+        // В таком случае http-клиент не распаковывает архив автоматически.
+        if (bytes.length >= 2 && bytes[0] == 0x1f && bytes[1] == 0x8b) {
+          return utf8.decode(gzip.decode(bytes));
+        }
+        return utf8.decode(bytes);
       }
       _logger.warning('请求失败 HTTP ${response.statusCode}: $url');
     }
