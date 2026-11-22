@@ -239,7 +239,14 @@ abstract class IptvStoreBase with Store {
   /// Обновление EPG: статус показывает реальную стадию загрузки.
   @action
   Future<void> refreshEpgList() async {
-    final channels = iptvList.map((e) => e.tvgName).toList();
+    // Передаём и tvg-id, и отображаемое имя: XMLTV-файлы нередко используют
+    // разные channel id, но совпадающий display-name.
+    final channels = iptvList
+        .expand((e) => [e.tvgName, e.name])
+        .map((value) => value.trim())
+        .where((value) => value.isNotEmpty)
+        .toSet()
+        .toList();
     if (!IptvSettings.epgEnable) {
       runInAction(() => epgStatus.value = EpgLoadStatus.disabled);
       return;
@@ -332,7 +339,7 @@ abstract class IptvStoreBase with Store {
   /// 指定频道的节目单（含已播出的往期节目，回看列表要用）
   List<EpgProgramme> getProgrammes(Iptv iptv) {
     epgList; // 建立 MobX 反应依赖
-    return _epgMap[iptv.tvgName]?.programmes ?? const [];
+    return (_epgMap[iptv.tvgName] ?? _epgMap[iptv.name])?.programmes ?? const [];
   }
 
   // 获取节目单
@@ -340,7 +347,7 @@ abstract class IptvStoreBase with Store {
     final now = DateTime.now().millisecondsSinceEpoch;
 
     epgList; // 建立 MobX 反应依赖
-    final epg = _epgMap[iptv.tvgName];
+    final epg = _epgMap[iptv.tvgName] ?? _epgMap[iptv.name];
 
     final currentProgramme = epg?.programmes.firstWhereOrNull((element) => element.start <= now && element.stop >= now);
     final nextProgramme = epg?.programmes.firstWhereOrNull((element) => element.start > now);
