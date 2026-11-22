@@ -27,13 +27,15 @@ Future<List<IptvGroup>> parseM3uSource(String source) async {
 
   // EPG URL может быть объявлен прямо в заголовке M3U.
   // Сохраняем его, чтобы EPG-загрузчик мог объединить его со встроенным источником.
-  IptvSettings.customEpgXml = '';
   final epgMatch = RegExp(
     r'(?:url-tvg|x-tvg-url)\s*=\s*"([^"]+)"',
     caseSensitive: false,
   ).firstMatch(m3uHead);
-  if (epgMatch != null) {
-    IptvSettings.customEpgXml = epgMatch.group(1)!.trim();
+  try {
+    // Парсер также используется в изолированных тестах до инициализации PrefsUtil.
+    IptvSettings.customEpgXml = epgMatch?.group(1)?.trim() ?? '';
+  } on LateInitializationError {
+    // В тестовом/раннем контексте настройки ещё не доступны.
   }
 
   var channel = 0;
